@@ -1,5 +1,6 @@
 ﻿'use client'
 'use client'
+'use client'
 import { useState, useEffect } from 'react'
 import { Zap, Clock, Users, Search, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
