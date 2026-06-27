@@ -1,91 +1,77 @@
 'use client'
 import { useEffect, useState } from 'react'
-import { ChevronRight, Search } from 'lucide-react'
+import { Search, ChevronRight, ArrowRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-
-const CATEGORY_ICONS: Record<string, string> = {
-  'Social & Life': '🎉', 'Corporate & Business': '💼', 'Education & Youth': '📚',
-  'Arts & Entertainment': '🎭', 'Sports & Fitness': '🏆', 'Civic & Community': '🤝',
-  'Religious & Spiritual': '✨', 'Niche & Subculture': '🎲', 'Cultural & Diaspora': '🌍',
-  'Government & Political': '🏛️', 'Health & Medical': '❤️', 'Fundraising': '💛',
-  'Volunteer-Driven': '🙌', 'Hospitality & Food': '🍽️', 'Agriculture & Rural': '🌾',
-  'Military & Veterans': '🎖️', 'Media & Creative': '🎬', 'Trade & Professional': '🤝',
-  'Social Causes': '🌱', 'Heritage & History': '🏛️', 'Water Events': '🌊',
-  'Adventure & Extreme': '⛰️', 'Motorsport & Automotive': '🏎️', 'Animal Events': '🐾',
-  'Equestrian': '🐴', 'Seasonal': '🌸', 'Digital & Hybrid': '💻',
-}
-
+const ICONS: Record<string,string> = {'Social & Life':'🎉','Corporate & Business':'💼','Education & Youth':'📚','Arts & Entertainment':'🎭','Sports & Fitness':'🏆','Civic & Community':'🤝','Religious & Spiritual':'✨','Niche & Subculture':'🎲','Cultural & Diaspora':'🌍','Government & Political':'🏛️','Health & Medical':'❤️','Fundraising':'💛','Volunteer-Driven':'🙌','Hospitality & Food':'🍽️','Agriculture & Rural':'🌾','Military & Veterans':'🎖️','Media & Creative':'🎬','Trade & Professional':'🤝','Social Causes':'🌱','Heritage & History':'🏺','Water Events':'🌊','Adventure & Extreme':'⛰️','Motorsport & Automotive':'🏎️','Animal Events':'🐾','Equestrian':'🐴','Seasonal':'🌸','Digital & Hybrid':'💻'}
 export default function BrowsePage() {
-  const [categories, setCategories] = useState<{ name: string; event_count: number }[]>([])
+  const [categories, setCategories] = useState<any[]>([])
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<any[]>([])
-
+  const [searching, setSearching] = useState(false)
+  const [showResults, setShowResults] = useState(false)
   useEffect(() => {
-    supabase.from('categories').select('*').then(({ data }) => {
-      if (data) setCategories(data)
+    supabase.from('events').select('category').then(({ data }) => {
+      if (data) {
+        const counts: Record<string,number> = {}
+        data.forEach((r: any) => { counts[r.category] = (counts[r.category]||0) + 1 })
+        setCategories(Object.entries(counts).map(([name, event_count]) => ({ name, event_count })).sort((a,b) => a.name.localeCompare(b.name)))
+      }
     })
   }, [])
-
   useEffect(() => {
-    if (!query || query.length < 2) { setResults([]); return }
-    const timer = setTimeout(async () => {
+    if (!query || query.length < 2) { setResults([]); setShowResults(false); return }
+    setSearching(true)
+    const t = setTimeout(async () => {
       const { data } = await supabase.rpc('search_events', { query, cat: null }).limit(8)
-      setResults(data || [])
+      setResults(data || []); setShowResults(true); setSearching(false)
     }, 300)
-    return () => clearTimeout(timer)
+    return () => clearTimeout(t)
   }, [query])
-
   return (
-    <main className="max-w-6xl mx-auto px-6 py-12">
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-navy mb-3">Browse All Events</h1>
-        <p className="text-gray-500 text-lg">266 event types across 27 categories — fully decomposed into claimable tasks</p>
+    <main>
+      <div className="bg-navy text-white py-14 px-6">
+        <div className="max-w-3xl mx-auto text-center">
+          <h1 className="text-4xl font-bold mb-3">Find your event</h1>
+          <p className="text-white/60 mb-8">266 event types — search below or browse by category</p>
+          <div className="relative">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder='Try "wedding", "charity gala", "team building"...' className="w-full pl-12 pr-4 py-4 rounded-2xl text-gray-900 text-base focus:outline-none" autoFocus />
+            {searching && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Searching...</div>}
+            {showResults && results.length > 0 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-20 text-left">
+                {results.map(ev => (
+                  <a key={ev.id} href={`/events/${ev.id}`} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 border-b border-gray-50 last:border-0 group">
+                    <div><div className="font-semibold text-gray-900 group-hover:text-navy">{ev.name}</div><div className="text-sm text-gray-400 mt-0.5">{ev.category} · {ev.scale}</div></div>
+                    <div className="flex items-center gap-2">{ev.has_tasks && <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Blueprint ready</span>}<ChevronRight size={16} className="text-gray-300"/></div>
+                  </a>
+                ))}
+                <a href="/custom" className="flex items-center gap-2 px-5 py-3 bg-gold/10 text-navy text-sm font-medium"><ArrowRight size={14}/> Don't see your event? Build a custom blueprint</a>
+              </div>
+            )}
+            {showResults && !searching && results.length === 0 && query.length >= 2 && (
+              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl overflow-hidden z-20 text-left">
+                <div className="px-5 py-4 text-gray-500 text-sm">No exact match found.</div>
+                <a href="/custom" className="flex items-center gap-2 px-5 py-3 bg-gold/10 text-navy text-sm font-medium border-t border-gray-100"><ArrowRight size={14}/> Build a blueprint for "{query}"</a>
+              </div>
+            )}
+          </div>
+          <p className="text-white/40 text-sm mt-4">Or browse by category below ↓</p>
+        </div>
       </div>
-
-      {/* Search */}
-      <div className="relative max-w-xl mx-auto mb-12">
-        <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={18} />
-        <input type="text" value={query} onChange={e => setQuery(e.target.value)}
-          placeholder="Search events..."
-          className="w-full pl-11 pr-4 py-3 rounded-xl border border-gray-200 bg-white focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy" />
-        {results.length > 0 && (
-          <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-xl shadow-xl border border-gray-100 overflow-hidden z-10">
-            {results.map(ev => (
-              <a key={ev.id} href={`/events/${ev.id}`}
-                className="flex items-center justify-between px-4 py-3 hover:bg-gray-50 border-b border-gray-50 last:border-0">
-                <div>
-                  <div className="font-semibold text-sm text-gray-900">{ev.name}</div>
-                  <div className="text-xs text-gray-400">{ev.category} · {ev.scale}</div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {ev.has_tasks && <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">Ready</span>}
-                  <ChevronRight size={14} className="text-gray-300" />
-                </div>
+      <div className="max-w-6xl mx-auto px-6 py-12">
+        {categories.length === 0 ? (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">{[...Array(15)].map((_,i) => <div key={i} className="bg-white rounded-2xl border border-gray-100 h-28 animate-pulse"/>)}</div>
+        ) : (
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
+            {categories.map(cat => (
+              <a key={cat.name} href={`/browse/${encodeURIComponent(cat.name)}`} className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-navy/20 p-5 text-center group transition-all">
+                <div className="text-3xl mb-2">{ICONS[cat.name]||'📋'}</div>
+                <div className="font-semibold text-gray-900 text-sm group-hover:text-navy leading-tight mb-1">{cat.name}</div>
+                <div className="text-xs text-gray-400">{cat.event_count} events</div>
               </a>
             ))}
           </div>
         )}
-      </div>
-
-      {/* Category grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-4">
-        {categories.map(cat => (
-          <a key={cat.name} href={`/browse/${encodeURIComponent(cat.name)}`}
-            className="bg-white rounded-2xl border border-gray-100 shadow-sm hover:shadow-md hover:border-navy/20 p-5 text-center group transition-all">
-            <div className="text-3xl mb-2">{CATEGORY_ICONS[cat.name] || '📋'}</div>
-            <div className="font-semibold text-gray-900 text-sm group-hover:text-navy transition-colors leading-tight mb-1">{cat.name}</div>
-            <div className="text-xs text-gray-400">{cat.event_count} events</div>
-          </a>
-        ))}
-      </div>
-
-      {/* CTA */}
-      <div className="mt-16 bg-navy text-white rounded-2xl p-8 text-center">
-        <h2 className="text-2xl font-bold mb-2">Can't find your event?</h2>
-        <p className="text-white/70 mb-6">Describe it and Dengine builds the blueprint from its knowledge base.</p>
-        <a href="/custom" className="bg-gold text-navy px-6 py-3 rounded-xl font-semibold hover:bg-yellow-300 transition-colors inline-block">
-          Build a custom blueprint
-        </a>
       </div>
     </main>
   )
