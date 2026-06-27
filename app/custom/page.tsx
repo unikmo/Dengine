@@ -1,3 +1,4 @@
+﻿'use client'
 'use client'
 import { useState, useEffect } from 'react'
 import { Zap, Clock, Users, Search, ChevronRight } from 'lucide-react'
@@ -6,11 +7,11 @@ import type { GeneratedTask, BudgetLevel, Event } from '@/types'
 import { LAYER_COLORS } from '@/types'
 const layers = ['Promotion', 'Setup', 'Execution', 'Cleanup'] as const
 const BUDGET_OPTIONS = [
-  { level: 0, icon: '🌱', label: 'Cost-Efficient', desc: 'Volunteer-run, minimal spend' },
-  { level: 1, icon: '⚖️', label: 'Balanced', desc: 'Good quality, reasonable cost' },
-  { level: 2, icon: '🏅', label: 'Premium', desc: 'Elevated, quality-focused' },
-  { level: 3, icon: '💎', label: 'Luxury', desc: 'High-end, brand experience' },
-  { level: 4, icon: '👑', label: 'Extravagant', desc: 'Money is secondary' },
+  { level: 0, icon: 'ðŸŒ±', label: 'Cost-Efficient', desc: 'Volunteer-run, minimal spend' },
+  { level: 1, icon: 'âš–ï¸', label: 'Balanced', desc: 'Good quality, reasonable cost' },
+  { level: 2, icon: 'ðŸ…', label: 'Premium', desc: 'Elevated, quality-focused' },
+  { level: 3, icon: 'ðŸ’Ž', label: 'Luxury', desc: 'High-end, brand experience' },
+  { level: 4, icon: 'ðŸ‘‘', label: 'Extravagant', desc: 'Money is secondary' },
 ]
 export default function CustomEventPage() {
   const [eventName, setEventName] = useState('')
@@ -69,7 +70,7 @@ export default function CustomEventPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold text-navy mb-1">Custom Event Builder</h1>
-      <p className="text-gray-500 mb-8">Dengine checks its knowledge base of 266+ events first — then builds a tailored plan for anything new.</p>
+      <p className="text-gray-500 mb-8">Dengine checks its knowledge base of 266+ events first â€” then builds a tailored plan for anything new.</p>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
         <div className="relative">
           <label className="block text-sm font-semibold text-gray-700 mb-2">What event are you planning? <span className="text-red-500">*</span></label>
@@ -79,16 +80,16 @@ export default function CustomEventPage() {
           </div>
           {showSug && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-10 overflow-hidden">
-              <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs font-semibold text-green-700">✓ Found in Dengine knowledge base</div>
+              <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs font-semibold text-green-700">âœ“ Found in Dengine knowledge base</div>
               {suggestions.map(ev => (
                 <button key={ev.id} onClick={() => pickSuggestion(ev)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0">
-                  <div><div className="font-semibold text-sm text-gray-900">{ev.name}</div><div className="text-xs text-gray-400">{ev.category} · {ev.has_tasks ? '✓ Full blueprint ready' : 'Profile available'}</div></div>
+                  <div><div className="font-semibold text-sm text-gray-900">{ev.name}</div><div className="text-xs text-gray-400">{ev.category} Â· {ev.has_tasks ? 'âœ“ Full blueprint ready' : 'Profile available'}</div></div>
                   <ChevronRight size={14} className="text-gray-300 flex-shrink-0"/>
                 </button>
               ))}
             </div>
           )}
-          {foundInDB && matchedEvent && <p className="mt-2 text-sm text-green-600 font-medium">✓ Matched "{matchedEvent.name}" — {matchedEvent.has_tasks ? 'full blueprint ready' : 'profile found'}</p>}
+          {foundInDB && matchedEvent && <p className="mt-2 text-sm text-green-600 font-medium">âœ“ Matched "{matchedEvent.name}" â€” {matchedEvent.has_tasks ? 'full blueprint ready' : 'profile found'}</p>}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Expected number of guests</label>
@@ -107,7 +108,7 @@ export default function CustomEventPage() {
           <p className="text-xs text-gray-500 mt-2">{BUDGET_OPTIONS[budgetLevel].desc}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          {[['Volunteer-driven (15-min tasks)', isVolunteer, setIsVolunteer, '🙌'],['First time running this event', isFirstTime, setIsFirstTime, '🆕'],['Outdoor event', isOutdoor, setIsOutdoor, '🌤️']].map(([label, value, setter, icon]: any) => (
+          {[['Volunteer-driven (15-min tasks)', isVolunteer, setIsVolunteer, 'ðŸ™Œ'],['First time running this event', isFirstTime, setIsFirstTime, 'ðŸ†•'],['Outdoor event', isOutdoor, setIsOutdoor, 'ðŸŒ¤ï¸']].map(([label, value, setter, icon]: any) => (
             <label key={label} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${value ? 'border-navy bg-navy/5 text-navy' : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200'}`}>
               <input type="checkbox" checked={value} onChange={e => setter(e.target.checked)} className="sr-only"/>
               <span>{icon}</span><span>{label}</span>
@@ -115,7 +116,7 @@ export default function CustomEventPage() {
           ))}
         </div>
         <button onClick={generate} disabled={!eventName.trim() || generating} className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${eventName.trim() && !generating ? 'bg-gold text-navy hover:bg-yellow-300 shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
-          {generating ? <><span className="animate-spin inline-block">⚡</span> Dengine is loading your blueprint...</> : foundInDB && matchedEvent?.has_tasks ? <><Zap size={18}/> Load blueprint — {matchedEvent.name}</> : <><Zap size={18}/> Get Dengine blueprint</>}
+          {generating ? <><span className="animate-spin inline-block">âš¡</span> Dengine is loading your blueprint...</> : foundInDB && matchedEvent?.has_tasks ? <><Zap size={18}/> Load blueprint â€” {matchedEvent.name}</> : <><Zap size={18}/> Get Dengine blueprint</>}
         </button>
       </div>
       {tasks.length > 0 && (
@@ -126,14 +127,14 @@ export default function CustomEventPage() {
                 <h2 className="text-2xl font-bold text-navy">{matchedEvent?.name || eventName}</h2>
                 {foundInDB && <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">From knowledge base</span>}
               </div>
-              <p className="text-gray-500">{tasks.length} tasks · {Math.round(tasks.reduce((s,t) => s+t.time_minutes,0)/60*10)/10}h total{isVolunteer && ' · All ≤15 min'}</p>
+              <p className="text-gray-500">{tasks.length} tasks Â· {Math.round(tasks.reduce((s,t) => s+t.time_minutes,0)/60*10)/10}h total{isVolunteer && ' Â· All â‰¤15 min'}</p>
             </div>
             <button onClick={() => window.print()} className="btn-primary text-sm py-2 flex-shrink-0">Print</button>
           </div>
           {isVolunteer && (
             <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
               <Users size={18} className="text-navy flex-shrink-0"/>
-              <input type="text" value={claimName} onChange={e => setClaimName(e.target.value)} placeholder="Enter your name — then tap any task to claim it" className="flex-1 focus:outline-none text-sm text-gray-700 placeholder:text-gray-400"/>
+              <input type="text" value={claimName} onChange={e => setClaimName(e.target.value)} placeholder="Enter your name â€” then tap any task to claim it" className="flex-1 focus:outline-none text-sm text-gray-700 placeholder:text-gray-400"/>
             </div>
           )}
           <div className="space-y-6">
@@ -162,11 +163,11 @@ import type { GeneratedTask, BudgetLevel, Event } from '@/types'
 import { LAYER_COLORS } from '@/types'
 const layers = ['Promotion', 'Setup', 'Execution', 'Cleanup'] as const
 const BUDGET_OPTIONS = [
-  { level: 0, icon: '🌱', label: 'Cost-Efficient', desc: 'Volunteer-run, minimal spend' },
-  { level: 1, icon: '⚖️', label: 'Balanced', desc: 'Good quality, reasonable cost' },
-  { level: 2, icon: '🏅', label: 'Premium', desc: 'Elevated, quality-focused' },
-  { level: 3, icon: '💎', label: 'Luxury', desc: 'High-end, brand experience' },
-  { level: 4, icon: '👑', label: 'Extravagant', desc: 'Money is secondary' },
+  { level: 0, icon: 'ðŸŒ±', label: 'Cost-Efficient', desc: 'Volunteer-run, minimal spend' },
+  { level: 1, icon: 'âš–ï¸', label: 'Balanced', desc: 'Good quality, reasonable cost' },
+  { level: 2, icon: 'ðŸ…', label: 'Premium', desc: 'Elevated, quality-focused' },
+  { level: 3, icon: 'ðŸ’Ž', label: 'Luxury', desc: 'High-end, brand experience' },
+  { level: 4, icon: 'ðŸ‘‘', label: 'Extravagant', desc: 'Money is secondary' },
 ]
 export default function CustomEventPage() {
   const [eventName, setEventName] = useState('')
@@ -225,7 +226,7 @@ export default function CustomEventPage() {
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
       <h1 className="text-3xl font-bold text-navy mb-1">Custom Event Builder</h1>
-      <p className="text-gray-500 mb-8">Dengine checks its knowledge base of 266+ events first — then builds a tailored plan for anything new.</p>
+      <p className="text-gray-500 mb-8">Dengine checks its knowledge base of 266+ events first â€” then builds a tailored plan for anything new.</p>
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
         <div className="relative">
           <label className="block text-sm font-semibold text-gray-700 mb-2">What event are you planning? <span className="text-red-500">*</span></label>
@@ -235,16 +236,16 @@ export default function CustomEventPage() {
           </div>
           {showSug && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-10 overflow-hidden">
-              <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs font-semibold text-green-700">✓ Found in Dengine knowledge base</div>
+              <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs font-semibold text-green-700">âœ“ Found in Dengine knowledge base</div>
               {suggestions.map(ev => (
                 <button key={ev.id} onClick={() => pickSuggestion(ev)} className="w-full flex items-center justify-between px-4 py-3 hover:bg-gray-50 text-left border-b border-gray-50 last:border-0">
-                  <div><div className="font-semibold text-sm text-gray-900">{ev.name}</div><div className="text-xs text-gray-400">{ev.category} · {ev.has_tasks ? '✓ Full blueprint ready' : 'Profile available'}</div></div>
+                  <div><div className="font-semibold text-sm text-gray-900">{ev.name}</div><div className="text-xs text-gray-400">{ev.category} Â· {ev.has_tasks ? 'âœ“ Full blueprint ready' : 'Profile available'}</div></div>
                   <ChevronRight size={14} className="text-gray-300 flex-shrink-0"/>
                 </button>
               ))}
             </div>
           )}
-          {foundInDB && matchedEvent && <p className="mt-2 text-sm text-green-600 font-medium">✓ Matched "{matchedEvent.name}" — {matchedEvent.has_tasks ? 'full blueprint ready' : 'profile found'}</p>}
+          {foundInDB && matchedEvent && <p className="mt-2 text-sm text-green-600 font-medium">âœ“ Matched "{matchedEvent.name}" â€” {matchedEvent.has_tasks ? 'full blueprint ready' : 'profile found'}</p>}
         </div>
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Expected number of guests</label>
@@ -263,7 +264,7 @@ export default function CustomEventPage() {
           <p className="text-xs text-gray-500 mt-2">{BUDGET_OPTIONS[budgetLevel].desc}</p>
         </div>
         <div className="flex flex-wrap gap-3">
-          {[['Volunteer-driven (15-min tasks)', isVolunteer, setIsVolunteer, '🙌'],['First time running this event', isFirstTime, setIsFirstTime, '🆕'],['Outdoor event', isOutdoor, setIsOutdoor, '🌤️']].map(([label, value, setter, icon]: any) => (
+          {[['Volunteer-driven (15-min tasks)', isVolunteer, setIsVolunteer, 'ðŸ™Œ'],['First time running this event', isFirstTime, setIsFirstTime, 'ðŸ†•'],['Outdoor event', isOutdoor, setIsOutdoor, 'ðŸŒ¤ï¸']].map(([label, value, setter, icon]: any) => (
             <label key={label} className={`flex items-center gap-2 px-4 py-2.5 rounded-xl border-2 cursor-pointer transition-all text-sm font-medium ${value ? 'border-navy bg-navy/5 text-navy' : 'border-gray-100 bg-gray-50 text-gray-600 hover:border-gray-200'}`}>
               <input type="checkbox" checked={value} onChange={e => setter(e.target.checked)} className="sr-only"/>
               <span>{icon}</span><span>{label}</span>
@@ -271,7 +272,7 @@ export default function CustomEventPage() {
           ))}
         </div>
         <button onClick={generate} disabled={!eventName.trim() || generating} className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${eventName.trim() && !generating ? 'bg-gold text-navy hover:bg-yellow-300 shadow-sm' : 'bg-gray-100 text-gray-400 cursor-not-allowed'}`}>
-          {generating ? <><span className="animate-spin inline-block">⚡</span> Dengine is loading your blueprint...</> : foundInDB && matchedEvent?.has_tasks ? <><Zap size={18}/> Load blueprint — {matchedEvent.name}</> : <><Zap size={18}/> Get Dengine blueprint</>}
+          {generating ? <><span className="animate-spin inline-block">âš¡</span> Dengine is loading your blueprint...</> : foundInDB && matchedEvent?.has_tasks ? <><Zap size={18}/> Load blueprint â€” {matchedEvent.name}</> : <><Zap size={18}/> Get Dengine blueprint</>}
         </button>
       </div>
       {tasks.length > 0 && (
@@ -282,14 +283,14 @@ export default function CustomEventPage() {
                 <h2 className="text-2xl font-bold text-navy">{matchedEvent?.name || eventName}</h2>
                 {foundInDB && <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">From knowledge base</span>}
               </div>
-              <p className="text-gray-500">{tasks.length} tasks · {Math.round(tasks.reduce((s,t) => s+t.time_minutes,0)/60*10)/10}h total{isVolunteer && ' · All ≤15 min'}</p>
+              <p className="text-gray-500">{tasks.length} tasks Â· {Math.round(tasks.reduce((s,t) => s+t.time_minutes,0)/60*10)/10}h total{isVolunteer && ' Â· All â‰¤15 min'}</p>
             </div>
             <button onClick={() => window.print()} className="btn-primary text-sm py-2 flex-shrink-0">Print</button>
           </div>
           {isVolunteer && (
             <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 shadow-sm p-4 mb-5">
               <Users size={18} className="text-navy flex-shrink-0"/>
-              <input type="text" value={claimName} onChange={e => setClaimName(e.target.value)} placeholder="Enter your name — then tap any task to claim it" className="flex-1 focus:outline-none text-sm text-gray-700 placeholder:text-gray-400"/>
+              <input type="text" value={claimName} onChange={e => setClaimName(e.target.value)} placeholder="Enter your name â€” then tap any task to claim it" className="flex-1 focus:outline-none text-sm text-gray-700 placeholder:text-gray-400"/>
             </div>
           )}
           <div className="space-y-6">
@@ -314,7 +315,7 @@ export default function CustomEventPage() {
                             </div>
                             <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
                               <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${colors.bg} ${colors.text}`}><Clock size={10}/>{task.time_minutes} min</span>
-                              {claimed ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ {claimed}</span> : isVolunteer && <span className="text-xs text-gray-400">tap to claim</span>}
+                              {claimed ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">âœ“ {claimed}</span> : isVolunteer && <span className="text-xs text-gray-400">tap to claim</span>}
                             </div>
                           </div>
                         </div>
