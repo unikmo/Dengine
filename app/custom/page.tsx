@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Zap, Clock, Users, Search, ChevronRight } from 'lucide-react'
+import { Zap, Users, Search, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { GeneratedTask, Event, SmartContext } from '@/types'
 import { LAYER_COLORS } from '@/types'
@@ -23,8 +23,31 @@ const BUDGET_OPTIONS = [
 
 type ViewMode = 'layer' | 'subproject' | 'gantt'
 
+const STORAGE_KEY = 'dengine_blueprint_count'
+const STORAGE_RESET_KEY = 'dengine_blueprint_reset'
+const FREE_LIMIT = 3
+
+function getBlueprintCount(): number {
+  if (typeof window === 'undefined') return 0
+  const resetDate = localStorage.getItem(STORAGE_RESET_KEY)
+  const now = new Date()
+  const firstOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
+  if (!resetDate || resetDate < firstOfMonth) {
+    localStorage.setItem(STORAGE_KEY, '0')
+    localStorage.setItem(STORAGE_RESET_KEY, firstOfMonth)
+    return 0
+  }
+  return parseInt(localStorage.getItem(STORAGE_KEY) || '0', 10)
+}
+
+function incrementBlueprintCount() {
+  if (typeof window === 'undefined') return
+  const count = getBlueprintCount()
+  localStorage.setItem(STORAGE_KEY, String(count + 1))
+}
+
 export default function CustomEventPage() {
-  // Step 1 fields
+  // Step 1
   const [eventName, setEventName] = useState('')
   const [guestCount, setGuestCount] = useState('')
   const [context, setContext] = useState('')
@@ -38,10 +61,11 @@ export default function CustomEventPage() {
   const [foundInDB, setFoundInDB] = useState(false)
   const [matchedEvent, setMatchedEvent] = useState<Event | null>(null)
 
-  // Step tracking
+  // Step
   const [step, setStep] = useState<1 | 2 | 3>(1)
+  const [checkingDB, setCheckingDB] = useState(false)
 
-  // Step 2 fields (smart context)
+  // Step 2
   const [city, setCity] = useState('')
   const [country, setCountry] = useState('')
   const [spendType, setSpendType] = useState<'unknown' | 'volunteer' | 'amount'>('unknown')
@@ -50,21 +74,22 @@ export default function CustomEventPage() {
   const [planningStart, setPlanningStart] = useState('')
   const [suggestedStart, setSuggestedStart] = useState('')
   const [lateWarning, setLateWarning] = useState(false)
+  const [step2Revealed, setStep2Revealed] = useState(1)
 
-  // Step 3 fields
+  // Step 3
   const [generating, setGenerating] = useState(false)
   const [tasks, setTasks] = useState<GeneratedTask[]>([])
   const [claimName, setClaimName] = useState('')
   const [claimedBy, setClaimedBy] = useState<Record<number, string>>({})
   const [viewMode, setViewMode] = useState<ViewMode>('layer')
 
-  // ── Autocomplete ──────────────────────────────────────────────────────────
+  // Freemium gate
+  const [showGate, setShowGate] = useState(false)
+  const [pendingGenerate, setPendingGenerate] = useState<(() => void) | null>(null)
+
+  // Autocomplete
   useEffect(() => {
-    if (!eventName || eventName.length < 2) {
-      setSuggestions([])
-      setShowSug(false)
-      return
-    }
+    if (!eventName || eventName.length < 2) { setSuggestions([]); setShowSug(false); return }
     const t = setTimeout(async () => {
       const { data } = await supabase.rpc('search_events', { query: eventName, cat: null }).limit(6)
       if (data?.length) { setSuggestions(data); setShowSug(true) }
@@ -74,64 +99,65 @@ export default function CustomEventPage() {
   }, [eventName])
 
   function pickSuggestion(ev: Event) {
-    setEventName(ev.name)
-    setMatchedEvent(ev)
-    setFoundInDB(true)
-    setSuggestions([])
-    setShowSug(false)
+    setEventName(ev.name); setMatchedEvent(ev); setFoundInDB(true)
+    setSuggestions([]); setShowSug(false)
   }
 
-  // ── Event date → suggested planning start ─────────────────────────────────
+  // Event date → suggested start
   useEffect(() => {
     if (!eventDate) { setSuggestedStart(''); setLateWarning(false); return }
     const weeks = matchedEvent?.planning_weeks ?? 4
     const suggested = calculateSuggestedStart(eventDate, weeks)
     setSuggestedStart(suggested)
     if (!planningStart) setPlanningStart(suggested)
-
-    const today = new Date().toISOString().split('T')[0]
-    setLateWarning(today > suggested)
+    setLateWarning(new Date().toISOString().split('T')[0] > suggested)
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [eventDate, matchedEvent])
 
   useEffect(() => {
-    if (!planningStart || !suggestedStart) return
-    setLateWarning(planningStart > suggestedStart)
+    if (planningStart && suggestedStart) setLateWarning(planningStart > suggestedStart)
   }, [planningStart, suggestedStart])
 
-  // ── Step 1 → next ─────────────────────────────────────────────────────────
+  // Step 2 progressive reveal
+  useEffect(() => {
+    if (step !== 2) return
+    setStep2Revealed(1)
+    const t1 = setTimeout(() => setStep2Revealed(2), 400)
+    const t2 = setTimeout(() => setStep2Revealed(3), 800)
+    return () => { clearTimeout(t1); clearTimeout(t2) }
+  }, [step])
+
+  function gatedGenerate(fn: () => void) {
+    const count = getBlueprintCount()
+    if (count >= FREE_LIMIT) {
+      setPendingGenerate(() => fn)
+      setShowGate(true)
+    } else {
+      fn()
+    }
+  }
+
   async function handleStep1Next() {
     if (!eventName.trim()) return
-    // Check DB match confidence
+    setCheckingDB(true)
     const { data } = await supabase.rpc('search_events', { query: eventName, cat: null }).limit(1)
+    setCheckingDB(false)
     if (data?.length) {
       const ev = data[0] as Event
-      setMatchedEvent(ev)
-      setFoundInDB(true)
-      // If we have a pre-built blueprint, skip to generate
-      if (ev.has_tasks) {
-        await generateFromDB(ev)
-        return
-      }
+      setMatchedEvent(ev); setFoundInDB(true)
+      if (ev.has_tasks) { gatedGenerate(() => generateFromDB(ev)); return }
     }
     setStep(2)
   }
 
   async function generateFromDB(ev: Event) {
-    setGenerating(true)
-    setStep(3)
-    setTasks([])
-    setClaimedBy({})
-    const { data: taskData } = await supabase
-      .from('tasks').select('*')
-      .eq('event_id', ev.id).order('slot')
+    setGenerating(true); setStep(3); setTasks([]); setClaimedBy({})
+    incrementBlueprintCount()
+    const { data: taskData } = await supabase.from('tasks').select('*').eq('event_id', ev.id).order('slot')
     if (taskData?.length) {
       setTasks(taskData.map((t: any) => ({
-        layer: t.layer,
-        title: t.title,
-        time_minutes: t.time_minutes,
-        who: t.who,
-        definition_of_done: t.definition_of_done,
+        layer: t.layer, title: t.title, time_minutes: t.time_minutes,
+        who: t.who, definition_of_done: t.definition_of_done,
         is_volunteer_claimable: true,
         sub_project: t.sub_project ?? undefined,
         weeks_before_event: t.weeks_before_event ?? undefined,
@@ -141,68 +167,42 @@ export default function CustomEventPage() {
     setGenerating(false)
   }
 
-  // ── Step 2 → generate ─────────────────────────────────────────────────────
   async function handleGenerate() {
-    setGenerating(true)
-    setStep(3)
-    setTasks([])
-    setClaimedBy({})
-
+    setGenerating(true); setStep(3); setTasks([]); setClaimedBy({})
+    incrementBlueprintCount()
     const guests = parseInt(guestCount) || 50
-
     const smart: SmartContext = {
-      city: city || undefined,
-      country: country || undefined,
-      spendType,
+      city: city || undefined, country: country || undefined, spendType,
       spendAmount: spendType === 'amount' && spendAmount ? parseFloat(spendAmount) : undefined,
-      eventDate: eventDate || undefined,
-      planningStart: planningStart || undefined,
+      eventDate: eventDate || undefined, planningStart: planningStart || undefined,
     }
-
     const fakeEvent = {
-      id: 'custom',
-      name: eventName,
-      category: matchedEvent?.category ?? 'Custom',
-      subcategory: matchedEvent?.subcategory ?? 'Custom',
+      id: 'custom', name: eventName,
+      category: matchedEvent?.category ?? 'Custom', subcategory: matchedEvent?.subcategory ?? 'Custom',
       scale: (guests < 50 ? 'Intimate' : guests < 500 ? 'Medium' : guests < 5000 ? 'Large' : 'Mega') as any,
-      blueprint: matchedEvent?.blueprint ?? 'General',
-      luxury_base: budgetLevel,
-      complexity: 3,
+      blueprint: matchedEvent?.blueprint ?? 'General', luxury_base: budgetLevel, complexity: 3,
       planning_weeks: matchedEvent?.planning_weeks ?? 4,
       description: `${eventName} for approximately ${guests} guests.${context ? ' ' + context : ''}`,
       key_dimensions: matchedEvent?.key_dimensions ?? ['logistics', 'coordination'],
       primary_cost: matchedEvent?.primary_cost ?? 'Venue and logistics',
-      key_risks: matchedEvent?.key_risks ?? [],
-      intake_questions: matchedEvent?.intake_questions ?? [],
-      has_tasks: false,
+      key_risks: matchedEvent?.key_risks ?? [], intake_questions: matchedEvent?.intake_questions ?? [], has_tasks: false,
     }
-
     const intake = {
-      guest_count: guests,
-      budget_level: budgetLevel,
-      is_first_time: false,
-      is_volunteer_driven: budgetLevel <= 1,
-      is_outdoor: venue === 'outdoor',
+      guest_count: guests, budget_level: budgetLevel, is_first_time: false,
+      is_volunteer_driven: budgetLevel <= 1, is_outdoor: venue === 'outdoor',
       custom_answers: { description: context },
     }
-
     try {
       const res = await fetch('/api/generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ event: fakeEvent, intake, smart }),
       })
       const data = await res.json()
       if (data.tasks) {
         setTasks(data.tasks)
-        // Auto-switch to Gantt if event date provided and tasks have target_dates
-        if (eventDate && data.tasks.some((t: GeneratedTask) => t.target_date)) {
-          setViewMode('gantt')
-        }
+        if (eventDate && data.tasks.some((t: GeneratedTask) => t.target_date)) setViewMode('gantt')
       }
-    } catch (e) {
-      console.error(e)
-    }
+    } catch (e) { console.error(e) }
     setGenerating(false)
   }
 
@@ -210,56 +210,65 @@ export default function CustomEventPage() {
     setClaimedBy(p => ({ ...p, [idx]: claimName.trim() || 'Anonymous' }))
   }
 
-  // ── Derived data ──────────────────────────────────────────────────────────
   const tasksByLayer = layers.reduce((acc, l) => {
-    acc[l] = tasks.filter(t => t.layer === l)
-    return acc
+    acc[l] = tasks.filter(t => t.layer === l); return acc
   }, {} as Record<string, GeneratedTask[]>)
 
   const subprojects = Array.from(new Set(tasks.map(t => t.sub_project).filter(Boolean))) as string[]
   const tasksBySubproject = subprojects.reduce((acc, sp) => {
-    acc[sp] = tasks
-      .filter(t => t.sub_project === sp)
-      .sort((a, b) => (b.weeks_before_event ?? 0) - (a.weeks_before_event ?? 0))
+    acc[sp] = tasks.filter(t => t.sub_project === sp).sort((a, b) => (b.weeks_before_event ?? 0) - (a.weeks_before_event ?? 0))
     return acc
   }, {} as Record<string, GeneratedTask[]>)
-  // Tasks without sub_project fall into their layer group
   const unsortedTasks = tasks.filter(t => !t.sub_project)
 
-  const totalMinutes = tasks.reduce((s, t) => s + t.time_minutes, 0)
-  const totalHours = Math.round((totalMinutes / 60) * 10) / 10
-
+  const totalHours = Math.round((tasks.reduce((s, t) => s + t.time_minutes, 0) / 60) * 10) / 10
   const hasGantt = !!(eventDate && planningStart && tasks.some(t => t.target_date))
-  const activeBudget = hoveredBudget !== null ? hoveredBudget : budgetLevel
+  const activeBudgetDesc = BUDGET_OPTIONS[hoveredBudget !== null ? hoveredBudget : budgetLevel]?.desc
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold text-navy mb-6">Break down any event into actionable tasks</h1>
+      {/* Freemium gate modal */}
+      {showGate && (
+        <div className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center px-6">
+          <div className="bg-white rounded-2xl p-8 max-w-md w-full shadow-2xl">
+            <h2 className="text-xl font-bold text-navy mb-3">You've used your 3 free blueprints this month.</h2>
+            <p className="text-gray-500 text-sm mb-6 leading-relaxed">
+              Upgrade to Pro for unlimited blueprints, timeline view, and clean share links.
+            </p>
+            <div className="flex flex-col gap-3">
+              <a href="/pricing" className="block text-center bg-gold text-navy py-3 rounded-xl font-semibold hover:bg-yellow-300 transition-colors">
+                Upgrade to Pro →
+              </a>
+              <button
+                onClick={() => { setShowGate(false); pendingGenerate?.(); setPendingGenerate(null) }}
+                className="text-sm text-gray-400 hover:text-gray-600 py-2"
+              >
+                Maybe later
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
-      {/* ── STEP 1: Form ── */}
+      <h1 className="text-3xl font-bold text-navy mb-6">What are you planning?</h1>
+
+      {/* Step 1 */}
       {step === 1 && (
         <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
-
-          {/* Event name */}
           <div className="relative">
-            <label className="block text-sm font-semibold text-gray-700 mb-2">
-              What event are you planning?
-            </label>
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
               <input
                 value={eventName}
                 onChange={e => { setEventName(e.target.value); setFoundInDB(false); setMatchedEvent(null) }}
-                placeholder="e.g. Charity Gala, School Fair, Team Building Day..."
+                placeholder="Wedding, charity gala, team away-day..."
                 className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-base"
               />
             </div>
-
             {showSug && suggestions.length > 0 && (
               <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-10 overflow-hidden">
                 <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs font-semibold text-green-700">
-                  Found in Dengine knowledge base
+                  Found in Dengine
                 </div>
                 {suggestions.map(ev => (
                   <button key={ev.id} onClick={() => pickSuggestion(ev)}
@@ -273,45 +282,38 @@ export default function CustomEventPage() {
                 ))}
               </div>
             )}
-
             {foundInDB && matchedEvent && (
-              <p className="mt-2 text-sm text-green-600 font-medium">
+              <p className="mt-2 text-sm text-green-600">
                 Matched {matchedEvent.name} — {matchedEvent.has_tasks ? 'full blueprint ready' : 'profile found'}
               </p>
             )}
           </div>
 
-          {/* Context */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Any context? (optional)</label>
             <input
               value={context}
               onChange={e => setContext(e.target.value)}
-              placeholder="e.g. formal dinner, multicultural guests, beachside venue..."
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-base"
+              placeholder="Any details — guests, style, location, theme..."
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm"
             />
           </div>
 
-          {/* Guests + Venue */}
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">Number of guests</label>
+              <label className="block text-sm font-semibold text-gray-700 mb-2">Guests</label>
               <input
                 type="number" min="1" value={guestCount}
                 onChange={e => setGuestCount(e.target.value)}
                 placeholder="e.g. 200"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-base"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm"
               />
             </div>
             <div>
               <label className="block text-sm font-semibold text-gray-700 mb-2">Venue</label>
               <div className="flex rounded-xl border border-gray-200 overflow-hidden h-[50px]">
                 {(['indoor', 'mixed', 'outdoor'] as const).map(v => (
-                  <button
-                    key={v}
-                    onClick={() => setVenue(v)}
-                    className={`flex-1 text-sm font-semibold capitalize transition-all ${venue === v ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
-                  >
+                  <button key={v} onClick={() => setVenue(v)}
+                    className={`flex-1 text-sm font-semibold capitalize transition-all ${venue === v ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}>
                     {v}
                   </button>
                 ))}
@@ -319,216 +321,178 @@ export default function CustomEventPage() {
             </div>
           </div>
 
-          {/* Budget */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Budget approach</label>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Budget</label>
             <div className="grid grid-cols-6 gap-2">
               {BUDGET_OPTIONS.map(opt => (
-                <button
-                  key={opt.level}
-                  onClick={() => setBudgetLevel(opt.level)}
-                  onMouseEnter={() => setHoveredBudget(opt.level)}
-                  onMouseLeave={() => setHoveredBudget(null)}
-                  className={`p-3 rounded-xl text-center transition-all border-2 ${
-                    budgetLevel === opt.level
-                      ? 'border-navy bg-navy text-white'
-                      : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-navy/30'
-                  }`}
-                >
-                  <div className="text-2xl mb-1">{opt.icon}</div>
-                  <div className="text-xs font-semibold leading-tight">{opt.label}</div>
-                </button>
+                <div key={opt.level} className="relative group">
+                  <button
+                    onClick={() => setBudgetLevel(opt.level)}
+                    onMouseEnter={() => setHoveredBudget(opt.level)}
+                    onMouseLeave={() => setHoveredBudget(null)}
+                    className={`w-full p-3 rounded-xl text-center transition-all border-2 ${
+                      budgetLevel === opt.level
+                        ? 'border-navy bg-navy text-white'
+                        : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-navy/30'
+                    }`}
+                  >
+                    <div className="text-2xl mb-1">{opt.icon}</div>
+                    <div className="text-xs font-semibold leading-tight">{opt.label}</div>
+                  </button>
+                  {hoveredBudget === opt.level && (
+                    <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 w-40 bg-navy text-white text-xs rounded-lg px-3 py-2 z-10 pointer-events-none text-center leading-snug">
+                      {opt.desc}
+                      <div className="absolute top-full left-1/2 -translate-x-1/2 border-4 border-transparent border-t-navy" />
+                    </div>
+                  )}
+                </div>
               ))}
             </div>
-            <p className="text-xs text-gray-500 mt-2 min-h-[16px]">
-              {BUDGET_OPTIONS[activeBudget as 0 | 1 | 2 | 3 | 4 | 5]?.desc}
-            </p>
           </div>
 
-          {/* CTA */}
           <button
             onClick={handleStep1Next}
-            disabled={!eventName.trim()}
+            disabled={!eventName.trim() || checkingDB}
             className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
-              eventName.trim()
+              eventName.trim() && !checkingDB
                 ? 'bg-gold text-navy hover:bg-yellow-300 shadow-sm'
                 : 'bg-gray-100 text-gray-400 cursor-not-allowed'
             }`}
           >
-            <Zap size={18} />
-            {foundInDB && matchedEvent?.has_tasks ? 'Load blueprint' : 'Continue'}
+            {checkingDB ? (
+              <><span className="animate-spin inline-block">⚡</span> Checking...</>
+            ) : foundInDB && matchedEvent?.has_tasks ? (
+              <><Zap size={18} /> Load blueprint for {matchedEvent.name} →</>
+            ) : (
+              <><Zap size={18} /> Build my blueprint →</>
+            )}
           </button>
         </div>
       )}
 
-      {/* ── STEP 2: Smart questions ── */}
+      {/* Step 2 */}
       {step === 2 && (
-        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
-          <div className="flex items-center justify-between mb-1">
-            <h2 className="text-lg font-bold text-navy">A few more details</h2>
-            <button onClick={() => setStep(1)} className="text-sm text-gray-400 hover:text-navy">← Back</button>
-          </div>
-          <p className="text-sm text-gray-500 -mt-2">These help Dengine tailor the blueprint for your exact situation.</p>
-
+        <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-6">
           {/* Location */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Where is the event? (optional)</label>
+          <div className={`transition-opacity duration-300 ${step2Revealed >= 1 ? 'opacity-100' : 'opacity-0'}`}>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Where is the event?</label>
             <div className="grid grid-cols-2 gap-3">
-              <input
-                value={city}
-                onChange={e => setCity(e.target.value)}
-                placeholder="City"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm"
-              />
-              <input
-                value={country}
-                onChange={e => setCountry(e.target.value)}
-                placeholder="Country"
-                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm"
-              />
+              <input value={city} onChange={e => setCity(e.target.value)} placeholder="City"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm" />
+              <input value={country} onChange={e => setCountry(e.target.value)} placeholder="Country"
+                className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm" />
             </div>
           </div>
 
-          {/* Spend per guest */}
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-2">Spend per guest</label>
+          {/* Spend */}
+          <div className={`transition-opacity duration-300 ${step2Revealed >= 2 ? 'opacity-100' : 'opacity-0'}`}>
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Roughly how much per guest?</label>
             <div className="flex gap-2 mb-3">
               {(['unknown', 'volunteer', 'amount'] as const).map(t => (
-                <button
-                  key={t}
-                  onClick={() => setSpendType(t)}
+                <button key={t} onClick={() => setSpendType(t)}
                   className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
-                    spendType === t
-                      ? 'border-navy bg-navy text-white'
-                      : 'border-gray-200 text-gray-600 hover:border-navy/30'
-                  }`}
-                >
-                  {t === 'unknown' ? "Don't know" : t === 'volunteer' ? 'Volunteer / $0' : 'Enter amount'}
+                    spendType === t ? 'border-navy bg-navy text-white' : 'border-gray-200 text-gray-600 hover:border-navy/30'
+                  }`}>
+                  {t === 'unknown' ? 'Not sure' : t === 'volunteer' ? 'Volunteer / Free' : '$___ per person'}
                 </button>
               ))}
             </div>
             {spendType === 'amount' && (
               <div className="relative">
                 <span className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">$</span>
-                <input
-                  type="number"
-                  value={spendAmount}
-                  onChange={e => setSpendAmount(e.target.value)}
-                  placeholder="e.g. 75"
-                  className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm"
-                />
+                <input type="number" value={spendAmount} onChange={e => setSpendAmount(e.target.value)} placeholder="e.g. 75"
+                  className="w-full pl-8 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm" />
               </div>
             )}
           </div>
 
-          {/* Event date */}
-          <div>
+          {/* Date */}
+          <div className={`transition-opacity duration-300 ${step2Revealed >= 3 ? 'opacity-100' : 'opacity-0'}`}>
             <label className="block text-sm font-semibold text-gray-700 mb-2">
-              Event date <span className="font-normal text-gray-400">(optional — enables Gantt view)</span>
+              When is the event? <span className="font-normal text-gray-400">(optional — enables timeline view)</span>
             </label>
-            <input
-              type="date"
-              value={eventDate}
-              min={new Date().toISOString().split('T')[0]}
+            <input type="date" value={eventDate} min={new Date().toISOString().split('T')[0]}
               onChange={e => setEventDate(e.target.value)}
-              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm"
-            />
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-sm" />
             {eventDate && suggestedStart && (
               <p className="text-xs text-gray-400 mt-1.5">
-                Suggested planning start: <strong className="text-navy">{formatDate(suggestedStart)}</strong>
+                To plan this well, start by <strong className="text-navy">{formatDate(suggestedStart)}</strong>
               </p>
+            )}
+
+            {eventDate && (
+              <div className="mt-4">
+                <label className="block text-sm font-semibold text-gray-700 mb-2">When do you start planning?</label>
+                <div className="flex gap-2">
+                  <button onClick={() => setPlanningStart(suggestedStart)}
+                    className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
+                      planningStart === suggestedStart ? 'border-navy bg-navy text-white' : 'border-gray-200 text-gray-600 hover:border-navy/30'
+                    }`}>
+                    Suggested ({suggestedStart ? new Date(suggestedStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'})
+                  </button>
+                  <input type="date" value={planningStart} onChange={e => setPlanningStart(e.target.value)}
+                    className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-navy text-sm" />
+                </div>
+                {lateWarning && (
+                  <p className="mt-2 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
+                    ⚠ Starting later than ideal — Dengine will prioritise the most urgent tasks.
+                  </p>
+                )}
+              </div>
             )}
           </div>
 
-          {/* Planning start */}
-          {eventDate && (
-            <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
-                When do you start planning?
-              </label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setPlanningStart(suggestedStart)}
-                  className={`flex-1 py-2.5 rounded-xl text-sm font-semibold border-2 transition-all ${
-                    planningStart === suggestedStart
-                      ? 'border-navy bg-navy text-white'
-                      : 'border-gray-200 text-gray-600 hover:border-navy/30'
-                  }`}
-                >
-                  Suggested ({suggestedStart ? new Date(suggestedStart).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : '—'})
-                </button>
-                <input
-                  type="date"
-                  value={planningStart}
-                  onChange={e => setPlanningStart(e.target.value)}
-                  className="flex-1 px-4 py-2.5 rounded-xl border-2 border-gray-200 focus:outline-none focus:border-navy text-sm"
-                />
-              </div>
-              {lateWarning && (
-                <p className="mt-2 text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2">
-                  ⚠ Starting later than recommended — some tasks may be compressed. Dengine will prioritise urgent items.
-                </p>
-              )}
+          <div className="flex items-center justify-between pt-2">
+            <button onClick={() => setStep(1)} className="text-sm text-gray-400 hover:text-navy">← Back</button>
+            <div className="flex items-center gap-4">
+              <button onClick={() => gatedGenerate(handleGenerate)} className="text-sm text-gray-400 hover:text-gray-600">
+                Skip these
+              </button>
+              <button onClick={() => gatedGenerate(handleGenerate)}
+                className="bg-gold text-navy px-6 py-3 rounded-xl font-bold text-sm hover:bg-yellow-300 transition-all flex items-center gap-2">
+                <Zap size={16} /> Build blueprint
+              </button>
             </div>
-          )}
-
-          {/* CTA */}
-          <button
-            onClick={handleGenerate}
-            className="w-full py-4 rounded-xl font-bold text-base bg-gold text-navy hover:bg-yellow-300 shadow-sm transition-all flex items-center justify-center gap-2"
-          >
-            <Zap size={18} /> Build blueprint
-          </button>
+          </div>
         </div>
       )}
 
-      {/* ── STEP 3: Blueprint ── */}
+      {/* Step 3 */}
       {step === 3 && (
         <div className="mt-2">
-
           {generating && (
             <div className="bg-white rounded-2xl border border-gray-100 p-10 text-center">
               <span className="text-4xl animate-spin inline-block mb-4">⚡</span>
-              <p className="text-navy font-semibold">Dengine is building your blueprint...</p>
+              <p className="text-navy font-semibold">Building your blueprint...</p>
             </div>
           )}
 
           {!generating && tasks.length > 0 && (
             <>
-              {/* Header */}
               <div className="flex items-start justify-between mb-5">
                 <div>
-                  <div className="flex items-center gap-2 mb-1 flex-wrap">
-                    <h2 className="text-2xl font-bold text-navy">{matchedEvent?.name || eventName}</h2>
-                    {foundInDB && (
-                      <span className="text-xs bg-green-100 text-green-700 px-3 py-1 rounded-full font-semibold">
-                        From knowledge base
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-gray-500 text-sm flex flex-wrap gap-3">
+                  <h2 className="text-2xl font-bold text-navy mb-1">{matchedEvent?.name || eventName}</h2>
+                  <p className="text-gray-400 text-sm flex flex-wrap gap-3">
                     <span>{tasks.length} tasks</span>
                     <span>{totalHours}h total</span>
                     {city && <span>{city}{country ? `, ${country}` : ''}</span>}
                     {eventDate && (
-                      <span>
-                        {new Date(eventDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
-                      </span>
+                      <span>{new Date(eventDate).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}</span>
                     )}
                   </p>
                 </div>
-                <div className="flex gap-2 flex-shrink-0">
-                  <button
-                    onClick={() => { setStep(1); setTasks([]); setMatchedEvent(null); setFoundInDB(false); setEventName(''); }}
-                    className="border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm font-semibold hover:border-navy/30"
-                  >
-                    Start over
-                  </button>
+                <div className="flex items-center gap-3 flex-shrink-0">
                   <button
                     onClick={() => window.print()}
-                    className="bg-navy text-white px-4 py-2 rounded-lg text-sm font-semibold"
+                    className="border border-gray-200 text-gray-600 px-3 py-2 rounded-lg text-sm font-semibold hover:border-navy/30"
                   >
                     Print
+                  </button>
+                  <button
+                    onClick={() => { setStep(1); setTasks([]); setMatchedEvent(null); setFoundInDB(false); setEventName('') }}
+                    className="text-sm text-gray-400 hover:text-navy"
+                  >
+                    Start over
                   </button>
                 </div>
               </div>
@@ -536,52 +500,33 @@ export default function CustomEventPage() {
               {/* View toggle */}
               <div className="flex gap-1 bg-gray-100 p-1 rounded-xl mb-5 w-fit">
                 {(['layer', 'subproject'] as const).map(m => (
-                  <button
-                    key={m}
-                    onClick={() => setViewMode(m)}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      viewMode === m ? 'bg-white text-navy shadow-sm' : 'text-gray-500 hover:text-navy'
-                    }`}
-                  >
+                  <button key={m} onClick={() => setViewMode(m)}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === m ? 'bg-white text-navy shadow-sm' : 'text-gray-500 hover:text-navy'}`}>
                     {m === 'layer' ? 'By layer' : 'By sub-project'}
                   </button>
                 ))}
                 {hasGantt && (
-                  <button
-                    onClick={() => setViewMode('gantt')}
-                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${
-                      viewMode === 'gantt' ? 'bg-white text-navy shadow-sm' : 'text-gray-500 hover:text-navy'
-                    }`}
-                  >
-                    Gantt
+                  <button onClick={() => setViewMode('gantt')}
+                    className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all ${viewMode === 'gantt' ? 'bg-white text-navy shadow-sm' : 'text-gray-500 hover:text-navy'}`}>
+                    Timeline
                   </button>
                 )}
               </div>
 
-              {/* Gantt view */}
               {viewMode === 'gantt' && hasGantt && (
-                <GanttView
-                  tasks={tasks}
-                  eventDate={eventDate}
-                  planningStart={planningStart}
-                  eventName={matchedEvent?.name || eventName}
-                />
+                <GanttView tasks={tasks} eventDate={eventDate} planningStart={planningStart}
+                  eventName={matchedEvent?.name || eventName} />
               )}
 
-              {/* Layer / Sub-project view */}
               {viewMode !== 'gantt' && (
                 <>
-                  {/* Volunteer claim bar */}
                   <div className="flex items-center gap-3 bg-white rounded-xl border border-gray-100 p-4 mb-5">
                     <Users size={18} className="text-navy flex-shrink-0" />
-                    <input
-                      type="text" value={claimName} onChange={e => setClaimName(e.target.value)}
-                      placeholder="Enter your name — then tap any task to claim it"
-                      className="flex-1 focus:outline-none text-sm text-gray-700 placeholder:text-gray-400"
-                    />
+                    <input type="text" value={claimName} onChange={e => setClaimName(e.target.value)}
+                      placeholder="Who's taking this task? Enter a name, then tap any task."
+                      className="flex-1 focus:outline-none text-sm text-gray-700 placeholder:text-gray-400" />
                   </div>
 
-                  {/* Task list */}
                   <div className="space-y-6">
                     {viewMode === 'layer' && layers.map(layer => {
                       const lt = tasksByLayer[layer] || []
@@ -599,17 +544,14 @@ export default function CustomEventPage() {
 
                     {viewMode === 'subproject' && (
                       <>
-                        {subprojects.map(sp => {
-                          const spTasks = tasksBySubproject[sp] || []
-                          return (
-                            <div key={sp}>
-                              <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg mb-3 text-sm font-bold bg-navy/5 text-navy border border-navy/10">
-                                {sp} <span className="font-normal opacity-60">({spTasks.length})</span>
-                              </div>
-                              <TaskList tasks={spTasks} tasksAll={tasks} colors={null} claimedBy={claimedBy} claimTask={claimTask} />
+                        {subprojects.map(sp => (
+                          <div key={sp}>
+                            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg mb-3 text-sm font-bold bg-navy/5 text-navy border border-navy/10">
+                              {sp} <span className="font-normal opacity-60">({tasksBySubproject[sp]?.length})</span>
                             </div>
-                          )
-                        })}
+                            <TaskList tasks={tasksBySubproject[sp] || []} tasksAll={tasks} colors={null} claimedBy={claimedBy} claimTask={claimTask} />
+                          </div>
+                        ))}
                         {unsortedTasks.length > 0 && (
                           <div>
                             <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-lg mb-3 text-sm font-bold bg-gray-50 text-gray-600 border border-gray-200">
@@ -631,14 +573,7 @@ export default function CustomEventPage() {
   )
 }
 
-// ── TaskList sub-component ────────────────────────────────────────────────────
-function TaskList({
-  tasks,
-  tasksAll,
-  colors,
-  claimedBy,
-  claimTask,
-}: {
+function TaskList({ tasks, tasksAll, colors, claimedBy, claimTask }: {
   tasks: GeneratedTask[]
   tasksAll: GeneratedTask[]
   colors: { bg: string; text: string; border: string; dot: string } | null
@@ -650,32 +585,29 @@ function TaskList({
       {tasks.map((task, i) => {
         const idx = tasksAll.indexOf(task)
         const claimed = claimedBy[idx]
-        const layerColors = colors ?? LAYER_COLORS[task.layer]
+        const c = colors ?? LAYER_COLORS[task.layer]
         return (
-          <div
-            key={i}
-            onClick={() => !claimed && claimTask(idx)}
-            className={`bg-white rounded-xl border p-4 transition-all cursor-pointer ${
-              claimed ? 'border-green-200 bg-green-50' : 'border-gray-100 hover:border-navy/20 hover:shadow-sm'
-            }`}
-          >
+          <div key={i} onClick={() => !claimed && claimTask(idx)}
+            className={`bg-white rounded-xl border-l-4 border border-gray-100 p-4 transition-all cursor-pointer ${
+              claimed ? 'border-l-green-400 bg-green-50' : 'border-l-transparent hover:border-l-navy/30 hover:shadow-sm'
+            }`}>
             <div className="flex items-start justify-between gap-4">
               <div className="flex-1">
                 <p className="font-semibold text-gray-900 text-sm">{task.title}</p>
                 <p className="text-xs text-gray-500 mt-1">{task.who}</p>
                 <p className="text-xs text-gray-400 mt-1 italic">{task.definition_of_done}</p>
                 {task.target_date && (
-                  <p className="text-xs text-blue-500 mt-1">
-                    Target: {new Date(task.target_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
+                  <p className="text-xs text-blue-400 mt-1">
+                    {new Date(task.target_date).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}
                   </p>
                 )}
               </div>
               <div className="flex flex-col items-end gap-1.5 flex-shrink-0">
-                <span className={`inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full ${layerColors.bg} ${layerColors.text}`}>
-                  <Clock size={10} />{task.time_minutes} min
+                <span className={`text-xs px-2 py-0.5 rounded-full ${c.bg} ${c.text}`}>
+                  {task.time_minutes} min
                 </span>
                 {claimed
-                  ? <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full">✓ {claimed}</span>
+                  ? <span className="text-xs text-green-600 font-medium">✓ {claimed}</span>
                   : <span className="text-xs text-gray-400">tap to claim</span>
                 }
               </div>
