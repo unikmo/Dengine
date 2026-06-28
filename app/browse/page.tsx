@@ -10,13 +10,22 @@ export default function BrowsePage() {
   const [searching, setSearching] = useState(false)
   const [showResults, setShowResults] = useState(false)
   useEffect(() => {
-    supabase.from('events').select('category').then(({ data }) => {
-      if (data) {
-        const counts: Record<string,number> = {}
-        data.forEach((r: any) => { counts[r.category] = (counts[r.category]||0) + 1 })
-        setCategories(Object.entries(counts).map(([name, event_count]) => ({ name, event_count })).sort((a,b) => a.name.localeCompare(b.name)))
-      }
-    })
+    supabase
+      .from('events')
+      .select('category')
+      .then(({ data, error }) => {
+        console.log('categories data:', data, 'error:', error)
+        if (data) {
+          const counts: Record<string, number> = {}
+          data.forEach((r: any) => {
+            counts[r.category] = (counts[r.category] || 0) + 1
+          })
+          const cats = Object.entries(counts)
+            .map(([name, event_count]) => ({ name, event_count }))
+            .sort((a, b) => a.name.localeCompare(b.name))
+          setCategories(cats)
+        }
+      })
   }, [])
   useEffect(() => {
     if (!query || query.length < 2) { setResults([]); setShowResults(false); return }
@@ -31,31 +40,61 @@ export default function BrowsePage() {
     <main>
       <div className="bg-navy text-white py-14 px-6">
         <div className="max-w-3xl mx-auto text-center">
-          <h1 className="text-4xl font-bold mb-3">Find your event</h1>
-          <p className="text-white/60 mb-8">266 event types — search below or browse by category</p>
-          <div className="relative">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
-            <input type="text" value={query} onChange={e => setQuery(e.target.value)} placeholder='Try "wedding", "charity gala", "team building"...' className="w-full pl-12 pr-4 py-4 rounded-2xl text-gray-900 text-base focus:outline-none" autoFocus />
-            {searching && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Searching...</div>}
-            {showResults && results.length > 0 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-20 text-left">
-                {results.map(ev => (
-                  <a key={ev.id} href={`/events/${ev.id}`} className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 border-b border-gray-50 last:border-0 group">
-                    <div><div className="font-semibold text-gray-900 group-hover:text-navy">{ev.name}</div><div className="text-sm text-gray-400 mt-0.5">{ev.category} · {ev.scale}</div></div>
-                    <div className="flex items-center gap-2">{ev.has_tasks && <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Blueprint ready</span>}<ChevronRight size={16} className="text-gray-300"/></div>
+          <h1 className="text-4xl font-bold mb-2">Browse Events</h1>
+          <p className="text-white/60 mb-8">266 event types across 27 categories</p>
+          <div className="text-left mt-10">
+            <p className="text-white/40 text-sm mb-3">Browse by category below ↓</p>
+            <div className="relative">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 text-gray-400" size={20} />
+              <input
+                type="text"
+                value={query}
+                onChange={e => setQuery(e.target.value)}
+                placeholder="Search within these categories..."
+                className="w-full pl-12 pr-4 py-4 rounded-2xl text-gray-900 text-base focus:outline-none"
+              />
+              {searching && <div className="absolute right-4 top-1/2 -translate-y-1/2 text-gray-400 text-sm">Searching...</div>}
+
+              {showResults && results.length > 0 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-2xl overflow-hidden z-20 text-left">
+                  {results.map(ev => (
+                    <a
+                      key={ev.id}
+                      href={`/events/${ev.id}`}
+                      className="flex items-center justify-between px-5 py-4 hover:bg-gray-50 border-b border-gray-50 last:border-0 group"
+                    >
+                      <div>
+                        <div className="font-semibold text-gray-900 group-hover:text-navy">{ev.name}</div>
+                        <div className="text-sm text-gray-400 mt-0.5">{ev.category} · {ev.scale}</div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        {ev.has_tasks && <span className="text-xs bg-green-100 text-green-700 px-2.5 py-1 rounded-full">Blueprint ready</span>}
+                        <ChevronRight size={16} className="text-gray-300" />
+                      </div>
+                    </a>
+                  ))}
+                  <a
+                    href="/custom"
+                    className="flex items-center gap-2 px-5 py-3 bg-gold/10 text-navy text-sm font-medium"
+                  >
+                    <ArrowRight size={14} /> Don't see your event? Build a custom blueprint
                   </a>
-                ))}
-                <a href="/custom" className="flex items-center gap-2 px-5 py-3 bg-gold/10 text-navy text-sm font-medium"><ArrowRight size={14}/> Don't see your event? Build a custom blueprint</a>
-              </div>
-            )}
-            {showResults && !searching && results.length === 0 && query.length >= 2 && (
-              <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl overflow-hidden z-20 text-left">
-                <div className="px-5 py-4 text-gray-500 text-sm">No exact match found.</div>
-                <a href="/custom" className="flex items-center gap-2 px-5 py-3 bg-gold/10 text-navy text-sm font-medium border-t border-gray-100"><ArrowRight size={14}/> Build a blueprint for "{query}"</a>
-              </div>
-            )}
+                </div>
+              )}
+
+              {showResults && !searching && results.length === 0 && query.length >= 2 && (
+                <div className="absolute top-full left-0 right-0 mt-2 bg-white rounded-2xl shadow-xl overflow-hidden z-20 text-left">
+                  <div className="px-5 py-4 text-gray-500 text-sm">No exact match found.</div>
+                  <a
+                    href="/custom"
+                    className="flex items-center gap-2 px-5 py-3 bg-gold/10 text-navy text-sm font-medium border-t border-gray-100"
+                  >
+                    <ArrowRight size={14} /> Build a blueprint for "{query}"
+                  </a>
+                </div>
+              )}
+            </div>
           </div>
-          <p className="text-white/40 text-sm mt-4">Or browse by category below ↓</p>
         </div>
       </div>
       <div className="max-w-6xl mx-auto px-6 py-12">
