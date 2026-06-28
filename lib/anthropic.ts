@@ -1,36 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { IntakeAnswers, GeneratedTask, Layer, Event, SmartContext } from '@/types'
+import { weeksBeforeToDate } from '@/lib/dates'
+
+export { calculateSuggestedStart, formatDate, formatDateShort, weeksBeforeToDate } from '@/lib/dates'
 
 const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
-
-export function calculateSuggestedStart(eventDate: string, planningWeeks: number): string {
-  const d = new Date(eventDate)
-  d.setDate(d.getDate() - planningWeeks * 7)
-  return d.toISOString().split('T')[0]
-}
-
-export function formatDate(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'long',
-    year: 'numeric',
-  })
-}
-
-export function formatDateShort(dateStr: string): string {
-  return new Date(dateStr).toLocaleDateString('en-GB', {
-    day: 'numeric',
-    month: 'short',
-  })
-}
-
-export function weeksBeforeToDate(eventDate: string, weeksBefore: number): string {
-  const d = new Date(eventDate)
-  d.setDate(d.getDate() - weeksBefore * 7)
-  return d.toISOString().split('T')[0]
-}
 
 export async function generateBlueprint(
   event: Event,

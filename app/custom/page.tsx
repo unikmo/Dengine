@@ -5,7 +5,7 @@ import { Zap, Clock, Users, Search, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import type { GeneratedTask, Event, SmartContext } from '@/types'
 import { LAYER_COLORS } from '@/types'
-import { calculateSuggestedStart, formatDate } from '@/lib/anthropic'
+import { calculateSuggestedStart, formatDate } from '@/lib/dates'
 import dynamic from 'next/dynamic'
 
 const GanttView = dynamic(() => import('@/components/GanttView'), { ssr: false })
