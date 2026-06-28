@@ -1,21 +1,23 @@
 export type Scale = 'Intimate' | 'Medium' | 'Large' | 'Mega'
 export type Layer = 'Promotion' | 'Setup' | 'Execution' | 'Cleanup'
-export type BudgetLevel = 0 | 1 | 2 | 3 | 4
+export type BudgetLevel = 0 | 1 | 2 | 3 | 4 | 5
 
 export const BUDGET_LABELS: Record<BudgetLevel, string> = {
-  0: 'Cost-Efficient',
-  1: 'Balanced',
-  2: 'Premium',
-  3: 'Luxury',
-  4: 'Extravagant',
+  0: 'Volunteer',
+  1: 'Budget',
+  2: 'Balanced',
+  3: 'Premium',
+  4: 'Luxury',
+  5: 'Extravagant',
 }
 
 export const BUDGET_DESCRIPTIONS: Record<BudgetLevel, string> = {
-  0: 'Volunteer-run, minimal spend, maximum participation',
-  1: 'Good quality at reasonable cost',
-  2: 'Elevated experience, quality-focused',
-  3: 'High-end, brand-level experience',
-  4: 'Money is secondary to experience',
+  0: 'Community-run. Everyone contributes one small task.',
+  1: 'Minimal spend. DIY where possible.',
+  2: 'Good quality at reasonable cost.',
+  3: 'Elevated experience, professional vendors.',
+  4: 'High-end, full professional team.',
+  5: 'Money is secondary. Best possible experience.',
 }
 
 export const SCALE_DESCRIPTIONS: Record<Scale, string> = {
@@ -25,11 +27,11 @@ export const SCALE_DESCRIPTIONS: Record<Scale, string> = {
   Mega: '5,000+ people',
 }
 
-export const LAYER_COLORS: Record<Layer, { bg: string; text: string; border: string }> = {
-  Promotion: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200' },
-  Setup: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200' },
-  Execution: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-200' },
-  Cleanup: { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200' },
+export const LAYER_COLORS: Record<Layer, { bg: string; text: string; border: string; dot: string }> = {
+  Promotion: { bg: 'bg-blue-50', text: 'text-blue-800', border: 'border-blue-200', dot: '#3b82f6' },
+  Setup: { bg: 'bg-amber-50', text: 'text-amber-800', border: 'border-amber-200', dot: '#f59e0b' },
+  Execution: { bg: 'bg-green-50', text: 'text-green-800', border: 'border-green-200', dot: '#22c55e' },
+  Cleanup: { bg: 'bg-gray-50', text: 'text-gray-700', border: 'border-gray-200', dot: '#9ca3af' },
 }
 
 export interface Event {
@@ -78,6 +80,18 @@ export interface GeneratedTask {
   who: string
   definition_of_done: string
   is_volunteer_claimable: boolean
+  sub_project?: string
+  weeks_before_event?: number
+  target_date?: string
+}
+
+export interface SmartContext {
+  city?: string
+  country?: string
+  spendType?: 'unknown' | 'volunteer' | 'amount'
+  spendAmount?: number
+  eventDate?: string
+  planningStart?: string
 }
 
 export interface Blueprint {

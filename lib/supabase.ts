@@ -12,3 +12,16 @@ export function createServerClient() {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
   )
 }
+
+// Admin client bypasses RLS — use only in API routes, never in browser
+export function createAdminClient() {
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!serviceKey) {
+    console.warn('[supabase] SUPABASE_SERVICE_ROLE_KEY not set, falling back to anon key')
+    return createServerClient()
+  }
+  return createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    serviceKey
+  )
+}
