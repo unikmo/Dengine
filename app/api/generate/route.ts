@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
+
+export const dynamic = 'force-dynamic'
 import { generateBlueprint } from '@/lib/anthropic'
 import type { Event, IntakeAnswers, SmartContext } from '@/types'
 
