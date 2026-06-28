@@ -40,7 +40,9 @@ export default function BrowsePage() {
 
   useEffect(() => {
     async function load() {
-      const { data } = await supabase.from('events').select('category')
+      const { data, error } = await supabase.from('events').select('category')
+      console.log('[browse] events.category', { rows: data?.length, error })
+      if (error) console.error('[browse] categories fetch error', error)
       if (data) {
         const counts: Record<string, number> = {}
         data.forEach((r: any) => {
