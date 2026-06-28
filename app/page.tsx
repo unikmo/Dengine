@@ -2,8 +2,8 @@
   return (
     <main className="min-h-[85vh] flex flex-col items-center justify-center px-6 py-16">
       <div className="text-center max-w-2xl mx-auto">
-        <h1 className="text-4xl sm:text-5xl font-bold text-navy mb-6 leading-tight">
-          Plan any event.<br />In minutes.
+        <h1 className="text-4xl sm:text-4xl font-bold text-navy mb-6 leading-tight">
+          Plan any event. In minutes.
         </h1>
         <div className="bg-navy rounded-2xl px-8 py-5 mb-10 max-w-xl mx-auto">
           <p className="text-white/70 text-base leading-relaxed">
