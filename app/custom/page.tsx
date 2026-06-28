@@ -1,25 +1,33 @@
 ﻿'use client'
+
 import { useState, useEffect } from 'react'
 import { Zap, Clock, Users, Search, ChevronRight } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import type { GeneratedTask, BudgetLevel, Event } from '@/types'
+import type { GeneratedTask, Event } from '@/types'
+
 import { LAYER_COLORS } from '@/types'
 
 const layers = ['Promotion', 'Setup', 'Execution', 'Cleanup'] as const
 
-const BUDGET = [
-  { level: 0, icon: '🌱', label: 'Cost-Efficient', desc: 'Volunteer-run, DIY, minimal spend. Maximum participation.' },
-  { level: 1, icon: '⚖️', label: 'Balanced',       desc: 'Good quality at reasonable cost. Mix of paid and volunteer.' },
-  { level: 2, icon: '🏅', label: 'Premium',        desc: 'Elevated experience. Quality-focused. Some professional vendors.' },
-  { level: 3, icon: '💎', label: 'Luxury',         desc: 'High-end, brand-level experience. Full professional team.' },
-  { level: 4, icon: '👑', label: 'Extravagant',    desc: 'Money is secondary. Best possible experience, no compromises.' },
-]
+const BUDGET_OPTIONS = [
+  { level: 0, icon: '🙌', label: 'Volunteer', desc: 'Community-run. Everyone contributes one small task.' },
+  { level: 1, icon: '🌱', label: 'Budget', desc: 'Minimal spend. DIY where possible.' },
+  { level: 2, icon: '⚖️', label: 'Balanced', desc: 'Good quality at reasonable cost.' },
+  { level: 3, icon: '🏅', label: 'Premium', desc: 'Elevated experience, professional vendors.' },
+  { level: 4, icon: '💎', label: 'Luxury', desc: 'High-end, full professional team.' },
+  { level: 5, icon: '👑', label: 'Extravagant', desc: 'Money is secondary. Best possible experience.' },
+] as const
+
+
 
 export default function CustomEventPage() {
-  const [eventName, setEventName]     = useState('')
-  const [guestCount, setGuestCount]   = useState('')
-  const [isOutdoor, setIsOutdoor]     = useState(false)
-  const [budgetLevel, setBudgetLevel] = useState<BudgetLevel>(0)
+  const [eventName, setEventName] = useState('')
+  const [guestCount, setGuestCount] = useState('')
+  const [context, setContext] = useState('')
+  const [venue, setVenue] = useState<'indoor' | 'mixed' | 'outdoor'>('indoor')
+
+  const [budgetLevel, setBudgetLevel] = useState<number>(0)
+
   const [generating, setGenerating]   = useState(false)
   const [tasks, setTasks]             = useState<GeneratedTask[]>([])
   const [claimName, setClaimName]     = useState('')
@@ -63,6 +71,7 @@ export default function CustomEventPage() {
       .rpc('search_events', { query: eventName, cat: null })
       .limit(1)
 
+
     if (dbResults?.length) {
       const matched = dbResults[0] as Event
       setMatchedEvent(matched)
@@ -99,16 +108,30 @@ export default function CustomEventPage() {
       const fakeEvent = {
         id: 'custom', name: eventName, category: 'Custom', subcategory: 'Custom',
         scale: guests < 50 ? 'Intimate' : guests < 500 ? 'Medium' : guests < 5000 ? 'Large' : 'Mega',
-        blueprint: 'General', luxury_base: budgetLevel, complexity: 3, planning_weeks: 4,
+        blueprint: 'General',
+        luxury_base: budgetLevel,
+        complexity: 3,
+        planning_weeks: 4,
         description: `${eventName} for approximately ${guests} guests.`,
         key_dimensions: ['logistics', 'catering', 'coordination'],
-        primary_cost: 'Venue and catering', key_risks: [], intake_questions: [], has_tasks: false,
+        primary_cost: 'Venue and catering',
+        key_risks: [],
+        intake_questions: [],
+        has_tasks: false,
       }
+
       const intake = {
-        guest_count: guests, budget_level: budgetLevel,
-        is_first_time: false, is_volunteer_driven: true,
-        is_outdoor: isOutdoor, custom_answers: {},
+        guest_count: guests,
+        budget_level: budgetLevel,
+        is_first_time: false,
+        is_volunteer_driven: true,
+        is_outdoor: venue === 'outdoor',
+        custom_answers: {
+          description: context,
+        },
       }
+
+
       const res = await fetch('/api/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -133,12 +156,11 @@ export default function CustomEventPage() {
 
   return (
     <main className="max-w-3xl mx-auto px-6 py-10">
-      <h1 className="text-3xl font-bold text-navy mb-1">Break down any event</h1>
-      <p className="text-gray-500 mb-8">
-        Dengine checks 266+ events in its knowledge base first — then builds a tailored blueprint for anything new.
-      </p>
+      <h1 className="text-3xl font-bold text-navy mb-6">Break down any event into actionable tasks</h1>
 
       <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-6 space-y-5">
+
+
 
         {/* Event name */}
         <div className="relative">
@@ -146,6 +168,7 @@ export default function CustomEventPage() {
             What event are you planning?
           </label>
           <div className="relative">
+
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400" size={16} />
             <input
               value={eventName}
@@ -154,6 +177,17 @@ export default function CustomEventPage() {
               className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-base"
             />
           </div>
+
+          <div className="mt-4">
+            <label className="block text-sm font-semibold text-gray-700 mb-2">Any context? (optional)</label>
+            <input
+              value={context}
+              onChange={e => setContext(e.target.value)}
+              placeholder="e.g. formal dinner, multicultural guests, beachside venue..."
+              className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:outline-none focus:ring-2 focus:ring-navy/20 focus:border-navy text-base"
+            />
+          </div>
+
           {showSug && suggestions.length > 0 && (
             <div className="absolute top-full left-0 right-0 mt-1 bg-white rounded-xl shadow-xl border border-gray-100 z-10 overflow-hidden">
               <div className="px-4 py-2 bg-green-50 border-b border-green-100 text-xs font-semibold text-green-700">
@@ -178,8 +212,9 @@ export default function CustomEventPage() {
           )}
         </div>
 
-        {/* Row: Guests + Indoor/Outdoor */}
+        {/* Row: Guests + Venue */}
         <div className="grid grid-cols-2 gap-4">
+
           <div>
             <label className="block text-sm font-semibold text-gray-700 mb-2">Number of guests</label>
             <input
@@ -193,29 +228,36 @@ export default function CustomEventPage() {
             <label className="block text-sm font-semibold text-gray-700 mb-2">Venue</label>
             <div className="flex rounded-xl border border-gray-200 overflow-hidden h-[50px]">
               <button
-                onClick={() => setIsOutdoor(false)}
-                className={`flex-1 text-sm font-semibold transition-all ${!isOutdoor ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                onClick={() => setVenue('indoor')}
+                className={`flex-1 text-sm font-semibold transition-all ${venue === 'indoor' ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
               >
                 Indoor
               </button>
               <button
-                onClick={() => setIsOutdoor(true)}
-                className={`flex-1 text-sm font-semibold transition-all ${isOutdoor ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+                onClick={() => setVenue('mixed')}
+                className={`flex-1 text-sm font-semibold transition-all ${venue === 'mixed' ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
+              >
+                Mixed
+              </button>
+              <button
+                onClick={() => setVenue('outdoor')}
+                className={`flex-1 text-sm font-semibold transition-all ${venue === 'outdoor' ? 'bg-navy text-white' : 'bg-white text-gray-500 hover:bg-gray-50'}`}
               >
                 Outdoor
               </button>
             </div>
           </div>
+
         </div>
 
         {/* Budget */}
         <div>
           <label className="block text-sm font-semibold text-gray-700 mb-2">Budget approach</label>
-          <div className="grid grid-cols-5 gap-2">
-            {BUDGET.map(opt => (
+          <div className="grid grid-cols-6 gap-2">
+            {BUDGET_OPTIONS.map((opt) => (
               <button
                 key={opt.level}
-                onClick={() => setBudgetLevel(opt.level as BudgetLevel)}
+                onClick={() => setBudgetLevel(opt.level)}
                 onMouseEnter={() => setHoveredBudget(opt.level)}
                 onMouseLeave={() => setHoveredBudget(null)}
                 className={`p-3 rounded-xl text-center transition-all border-2 ${
@@ -224,20 +266,23 @@ export default function CustomEventPage() {
                     : 'border-gray-100 bg-gray-50 text-gray-700 hover:border-navy/30'
                 }`}
               >
+
                 <div className="text-2xl mb-1">{opt.icon}</div>
                 <div className="text-xs font-semibold leading-tight">{opt.label}</div>
               </button>
             ))}
           </div>
           <p className="text-xs text-gray-500 mt-2 min-h-[16px] transition-all">
-            {BUDGET[activeBudget].desc}
+            {BUDGET_OPTIONS[activeBudget as 0 | 1 | 2 | 3 | 4 | 5]?.desc}
           </p>
+
         </div>
 
         {/* CTA */}
         <button
           onClick={generate}
           disabled={!eventName.trim() || generating}
+
           className={`w-full py-4 rounded-xl font-bold text-base transition-all flex items-center justify-center gap-2 ${
             eventName.trim() && !generating
               ? 'bg-gold text-navy hover:bg-yellow-300 shadow-sm'
