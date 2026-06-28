@@ -40,40 +40,39 @@ export default function BrowsePage() {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await supabase.from('events').select('category')
-      console.log('[browse] events.category', { rows: data?.length, error })
-      if (error) console.error('[browse] categories fetch error', error)
-      if (data) {
-        const counts: Record<string, number> = {}
-        data.forEach((r: any) => {
-          counts[r.category] = (counts[r.category] || 0) + 1
-        })
-        setCategories(
-          Object.entries(counts)
-            .map(([name, event_count]) => ({ name, event_count }))
-            .sort((a, b) => a.name.localeCompare(b.name))
-        )
+      try {
+        const res = await fetch('/api/browse-categories')
+        const json = await res.json()
+        if (res.ok && json?.categories) setCategories(json.categories)
+        else console.error('[browse] categories fetch failed', json)
+      } catch (e) {
+        console.error('[browse] categories fetch error', e)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
 
     load()
   }, [])
 
   useEffect(() => {
-    if (!selected) {
-      setEvents([])
-      return
+    async function load() {
+      if (!selected) {
+        setEvents([])
+        return
+      }
+
+      try {
+        const res = await fetch(`/api/browse-events?category=${encodeURIComponent(selected)}`)
+        const json = await res.json()
+        if (res.ok && json?.events) setEvents(json.events)
+        else console.error('[browse] events fetch failed', json)
+      } catch (e) {
+        console.error('[browse] events fetch error', e)
+      }
     }
 
-    supabase
-      .from('events')
-      .select('*')
-      .eq('category', selected)
-      .order('name')
-      .then(({ data }) => {
-        setEvents(data || [])
-      })
+    load()
   }, [selected])
 
   return (
