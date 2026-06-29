@@ -33,7 +33,15 @@ export default function EventPage({ params }: { params: { id: string } }) {
       if (ev?.has_tasks) {
         const { data: tasks } = await supabase.from('tasks').select('*')
           .eq('event_id', params.id).order('slot')
-        if (tasks) setPreTasks(tasks)
+        if (tasks) {
+          setPreTasks(tasks)
+          // Show tasks immediately — don't make the visitor click Generate
+          setBlueprint(tasks.map(t => ({
+            layer: t.layer, title: t.title, time_minutes: t.time_minutes,
+            who: t.who, definition_of_done: t.definition_of_done,
+            is_volunteer_claimable: t.time_minutes <= 15
+          })))
+        }
       }
       setLoading(false)
     }
@@ -227,7 +235,7 @@ export default function EventPage({ params }: { params: { id: string } }) {
                 {generating ? (
                   <><span className="animate-spin">⚡</span> Generating...</>
                 ) : event.has_tasks ? (
-                  <><Zap size={18} /> Load blueprint ({preTasks.length} tasks)</>
+                  <><Zap size={18} /> Regenerate with my settings</>
                 ) : (
                   <><Zap size={18} /> Generate with AI</>
                 )}
