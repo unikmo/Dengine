@@ -34,17 +34,13 @@ const ICONS: Record<string, string> = {
 
 export default function BrowsePage() {
   const [categories, setCategories] = useState<{ name: string; event_count: number }[]>([])
-  const [selected, setSelected] = useState<string | null>(null)
-  const [events, setEvents] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
-  const [eventsLoading, setEventsLoading] = useState(false)
 
   useEffect(() => {
     supabase
       .from('events')
       .select('category')
-      .then(({ data, error }) => {
-        if (error) { console.error('[browse] categories error:', error); setLoading(false); return }
+      .then(({ data }) => {
         const counts: Record<string, number> = {}
         ;(data || []).forEach((r: { category: string }) => {
           if (r.category) counts[r.category] = (counts[r.category] || 0) + 1
@@ -57,108 +53,43 @@ export default function BrowsePage() {
       })
   }, [])
 
-  useEffect(() => {
-    if (!selected) { setEvents([]); return }
-    setEventsLoading(true)
-    supabase
-      .from('events')
-      .select('*')
-      .eq('category', selected)
-      .order('name')
-      .then(({ data, error }) => {
-        if (error) console.error('[browse] events error:', error)
-        setEvents(data || [])
-        setEventsLoading(false)
-      })
-  }, [selected])
-
   return (
-    <main className="max-w-6xl mx-auto px-6 py-12">
-      <div className="text-center mb-10">
-        <h1 className="text-4xl font-bold text-navy mb-2">What are you planning?</h1>
-        <p className="text-gray-400 text-sm">Choose a category</p>
+    <main className="max-w-5xl mx-auto px-6 py-16">
+      <div className="text-center mb-14">
+        <h1 className="text-4xl font-bold text-navy mb-3">What are you planning?</h1>
+        <p className="text-gray-400">Choose a category to see all event blueprints</p>
       </div>
 
       {loading ? (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
-          {[...Array(15)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl border border-gray-100 h-28 animate-pulse" />
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+          {[...Array(12)].map((_, i) => (
+            <div key={i} className="bg-white rounded-2xl h-32 animate-pulse" />
           ))}
         </div>
-      ) : categories.length === 0 ? (
-        <p className="text-center text-gray-400 py-16">
-          We couldn't load categories right now.{' '}
-          <a href="/custom" className="text-navy underline">Describe your event instead</a>.
-        </p>
       ) : (
-        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
           {categories.map(cat => (
-            <button
+            <a
               key={cat.name}
-              onClick={() => setSelected(selected === cat.name ? null : cat.name)}
-              className={`rounded-2xl p-5 text-center transition-all border-2 ${
-                selected === cat.name
-                  ? 'border-navy bg-navy text-white'
-                  : 'border-gray-100 bg-white hover:border-navy/30 hover:shadow-sm'
-              }`}
+              href={`/browse/${encodeURIComponent(cat.name)}`}
+              className="bg-white rounded-2xl p-6 text-center hover:shadow-md hover:-translate-y-0.5 transition-all group"
             >
-              <div className="text-3xl mb-2">{ICONS[cat.name] || '📋'}</div>
-              <div className="font-semibold text-sm leading-tight mb-1">{cat.name}</div>
-              <div className={`text-xs ${selected === cat.name ? 'text-white/60' : 'text-gray-400'}`}>
-                {cat.event_count} events
+              <div className="text-3xl mb-3">{ICONS[cat.name] || '📋'}</div>
+              <div className="font-semibold text-gray-900 text-sm leading-tight mb-1 group-hover:text-navy transition-colors">
+                {cat.name}
               </div>
-            </button>
+              <div className="text-xs text-gray-400">{cat.event_count} events</div>
+            </a>
           ))}
         </div>
       )}
 
-      {selected && (
-        <div className="mt-10">
-          {eventsLoading ? (
-            <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
-              {[...Array(6)].map((_, i) => (
-                <div key={i} className="bg-white rounded-xl border border-gray-100 h-24 animate-pulse" />
-              ))}
-            </div>
-          ) : events.length > 0 ? (
-            <>
-              <h2 className="text-xl font-bold text-navy mb-5">{selected}</h2>
-              <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-3">
-                {events.map(ev => (
-                  <a
-                    key={ev.id}
-                    href={`/events/${ev.id}`}
-                    className="bg-white rounded-xl border border-gray-100 p-5 hover:border-navy/20 hover:shadow-sm transition-all group"
-                  >
-                    <div className="flex items-start justify-between mb-2">
-                      <span className="text-xs text-gray-400">{ev.subcategory}</span>
-                      {ev.has_tasks && (
-                        <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
-                          Ready
-                        </span>
-                      )}
-                    </div>
-                    <h3 className="font-bold text-gray-900 text-sm group-hover:text-navy transition-colors">
-                      {ev.name}
-                    </h3>
-                  </a>
-                ))}
-              </div>
-              <p className="mt-8 text-center text-sm text-gray-400">
-                Don't see your event?{' '}
-                <a href="/custom" className="text-navy font-medium hover:underline">
-                  Build a custom blueprint →
-                </a>
-              </p>
-            </>
-          ) : (
-            <p className="text-center text-gray-400 py-8">
-              We don't have that one yet —{' '}
-              <a href="/custom" className="text-navy underline">describe it instead</a>.
-            </p>
-          )}
-        </div>
-      )}
+      <div className="mt-16 text-center">
+        <p className="text-sm text-gray-400 mb-3">Don't see your event type?</p>
+        <a href="/custom" className="bg-navy text-white text-sm font-semibold px-6 py-3 rounded-xl hover:bg-navy/90 transition-colors inline-block">
+          Describe it and we'll build the blueprint →
+        </a>
+      </div>
     </main>
   )
 }
