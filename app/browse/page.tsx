@@ -42,8 +42,9 @@ export default function BrowsePage() {
     fetch('/api/browse-categories')
       .then(r => r.json())
       .then(json => {
-        if (json?.categories) setCategories(json.categories)
-        else console.error('[browse] categories error:', json)
+        console.log('[browse] API response:', JSON.stringify(json).slice(0, 300))
+        if (json?.categories?.length) setCategories(json.categories)
+        else console.error('[browse] no categories in response:', json)
       })
       .catch(e => console.error('[browse] fetch error:', e))
       .finally(() => setLoading(false))
