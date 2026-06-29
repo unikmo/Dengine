@@ -1,5 +1,6 @@
 'use client'
 import { useEffect, useState } from 'react'
+import { supabase } from '@/lib/supabase'
 
 const ICONS: Record<string, string> = {
   'Social & Life': '🎉',
@@ -39,25 +40,36 @@ export default function BrowsePage() {
   const [eventsLoading, setEventsLoading] = useState(false)
 
   useEffect(() => {
-    fetch('/api/browse-categories')
-      .then(r => r.json())
-      .then(json => {
-        console.log('[browse] API response:', JSON.stringify(json).slice(0, 300))
-        if (json?.categories?.length) setCategories(json.categories)
-        else console.error('[browse] no categories in response:', json)
+    supabase
+      .from('events')
+      .select('category')
+      .then(({ data, error }) => {
+        if (error) { console.error('[browse] categories error:', error); setLoading(false); return }
+        const counts: Record<string, number> = {}
+        ;(data || []).forEach((r: { category: string }) => {
+          if (r.category) counts[r.category] = (counts[r.category] || 0) + 1
+        })
+        const cats = Object.entries(counts)
+          .map(([name, event_count]) => ({ name, event_count }))
+          .sort((a, b) => a.name.localeCompare(b.name))
+        setCategories(cats)
+        setLoading(false)
       })
-      .catch(e => console.error('[browse] fetch error:', e))
-      .finally(() => setLoading(false))
   }, [])
 
   useEffect(() => {
     if (!selected) { setEvents([]); return }
     setEventsLoading(true)
-    fetch(`/api/browse-events?category=${encodeURIComponent(selected)}`)
-      .then(r => r.json())
-      .then(json => { if (json?.events) setEvents(json.events) })
-      .catch(e => console.error('[browse] events error:', e))
-      .finally(() => setEventsLoading(false))
+    supabase
+      .from('events')
+      .select('*')
+      .eq('category', selected)
+      .order('name')
+      .then(({ data, error }) => {
+        if (error) console.error('[browse] events error:', error)
+        setEvents(data || [])
+        setEventsLoading(false)
+      })
   }, [selected])
 
   return (
