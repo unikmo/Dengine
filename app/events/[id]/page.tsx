@@ -33,20 +33,38 @@ export default function EventPage({ params }: { params: { id: string } }) {
       if (ev?.has_tasks) {
         const { data: tasks } = await supabase.from('tasks').select('*')
           .eq('event_id', params.id).order('slot')
-        if (tasks) {
+        if (tasks?.length) {
           setPreTasks(tasks)
-          // Show tasks immediately — don't make the visitor click Generate
           setBlueprint(tasks.map(t => ({
             layer: t.layer, title: t.title, time_minutes: t.time_minutes,
             who: t.who, definition_of_done: t.definition_of_done,
             is_volunteer_claimable: t.time_minutes <= 15
           })))
+          setLoading(false)
+          return
         }
       }
       setLoading(false)
+      // Auto-generate so visitors see a blueprint immediately
+      autoGenerate(ev)
     }
     load()
   }, [params.id])
+
+  async function autoGenerate(ev: Event | null) {
+    if (!ev) return
+    setGenerating(true)
+    try {
+      const res = await fetch('/api/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ event: ev, intake: { guest_count: 50, budget_level: 0, is_first_time: false, is_volunteer_driven: ev.complexity <= 3, is_outdoor: false, custom_answers: {} } })
+      })
+      const data = await res.json()
+      if (data.tasks) setBlueprint(data.tasks)
+    } catch (e) { console.error(e) }
+    setGenerating(false)
+  }
 
   async function generateBlueprint() {
     if (!event) return
@@ -248,9 +266,19 @@ export default function EventPage({ params }: { params: { id: string } }) {
         <div className="md:col-span-2">
           {blueprint.length === 0 ? (
             <div className="card p-12 text-center text-gray-400">
-              <div className="text-5xl mb-4">⚡</div>
-              <div className="font-semibold text-lg text-gray-600 mb-2">Your blueprint will appear here</div>
-              <div className="text-sm">Configure your event on the left and click Generate</div>
+              {generating ? (
+                <>
+                  <div className="text-5xl mb-4 animate-pulse">⚡</div>
+                  <div className="font-semibold text-lg text-gray-600 mb-2">Building your blueprint…</div>
+                  <div className="text-sm">This takes about 10 seconds</div>
+                </>
+              ) : (
+                <>
+                  <div className="text-5xl mb-4">⚡</div>
+                  <div className="font-semibold text-lg text-gray-600 mb-2">Your blueprint will appear here</div>
+                  <div className="text-sm">Configure your event on the left and click Generate</div>
+                </>
+              )}
             </div>
           ) : (
             <div>
