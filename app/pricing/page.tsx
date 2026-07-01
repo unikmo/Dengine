@@ -13,7 +13,7 @@ export default function PricingPage() {
 
       {/* Tiers */}
       <div className="max-w-5xl mx-auto px-6 py-16">
-        <div className="grid md:grid-cols-3 gap-6">
+        <div className="grid md:grid-cols-4 gap-6">
 
           {/* FREE */}
           <div className="rounded-2xl border-2 border-gray-100 p-8">
@@ -65,6 +65,34 @@ export default function PricingPage() {
             <a href="/custom"
               className="block text-center bg-navy text-white font-bold py-3 rounded-xl hover:bg-navy/90 transition-all">
               Get Personal →
+            </a>
+          </div>
+
+          {/* COMMUNITY */}
+          <div className="rounded-2xl border-2 border-gray-100 p-8">
+            <div className="text-3xl mb-4">🤝</div>
+            <div className="font-bold text-navy text-xl mb-1">Community</div>
+            <div className="text-4xl font-bold text-navy mb-1">$15</div>
+            <div className="text-sm text-gray-400 mb-6">One-time per event</div>
+            <p className="text-xs text-gray-400 italic mb-4">
+              Charity events, community fetes, fundraising walks, volunteer days, religious events, cultural celebrations
+            </p>
+            <ul className="space-y-3 text-sm text-gray-600 mb-8">
+              {[
+                'Everything in Personal',
+                'Volunteer task claiming by name',
+                'Shareable claiming link',
+                'Task ownership tracking',
+                'Print-ready task list',
+              ].map(f => (
+                <li key={f} className="flex items-start gap-2">
+                  <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span> {f}
+                </li>
+              ))}
+            </ul>
+            <a href="/custom"
+              className="block text-center bg-navy text-white font-bold py-3 rounded-xl hover:bg-navy/90 transition-all">
+              Get Community →
             </a>
           </div>
 
@@ -125,7 +153,7 @@ export default function PricingPage() {
               },
               {
                 q: 'What is the difference between Personal and Professional?',
-                a: 'Personal is for events where you are organising alone or with a small group — weddings, parties, school events, community fairs. Professional adds the tools a team needs: Gantt timeline, sub-project breakdown, PDF export and backwards date planning from your event date.',
+                a: 'Personal ($9.99) covers individual personal events — weddings, parties, birthdays. Community ($15) adds volunteer task claiming and sharing tools for charity and civic events. Professional ($59) adds the full toolkit: Gantt timeline, sub-project breakdown, PDF export and backwards date planning for corporate and large-scale events.',
               },
               {
                 q: 'What does "one-time per event" mean exactly?',
