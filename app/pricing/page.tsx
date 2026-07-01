@@ -1,142 +1,155 @@
-'use client'
-import { useState } from 'react'
-
-const FAQ = [
-  {
-    q: 'Can I use Dengine for free forever?',
-    a: 'Yes. The free tier is genuinely useful — 3 blueprints a month, all event types. No credit card required.',
-  },
-  {
-    q: 'What counts as a blueprint?',
-    a: "Each time you generate a task plan for an event. Reloading a saved blueprint doesn't count.",
-  },
-  {
-    q: 'What\'s the Dengine watermark?',
-    a: "Free share links include a small 'Planned with Dengine' footer. Pro removes it.",
-  },
-]
-
 export default function PricingPage() {
-  const [openFaq, setOpenFaq] = useState<number | null>(null)
-
   return (
-    <main className="max-w-4xl mx-auto px-6 py-16">
-      <div className="text-center mb-14">
-        <h1 className="text-4xl font-bold text-navy mb-3">Simple pricing. Start free.</h1>
-        <p className="text-gray-500">Upgrade when you need more. Downgrade anytime.</p>
+    <main className="bg-white">
+
+      {/* Header */}
+      <div className="bg-[#f5f0e8] py-16 px-6 text-center">
+        <p className="text-xs font-bold tracking-widest text-gold uppercase mb-4">Pricing</p>
+        <h1 className="text-4xl font-bold text-navy mb-4">Pay once. Use it. Done.</h1>
+        <p className="text-gray-500 text-lg max-w-xl mx-auto">
+          No subscriptions. No monthly fees. Pay for what you need, when you need it. Start free, always.
+        </p>
       </div>
 
-      <div className="grid md:grid-cols-3 gap-6 mb-16">
-        {/* Free */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 flex flex-col">
-          <div className="mb-6">
-            <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Free</div>
+      {/* Tiers */}
+      <div className="max-w-5xl mx-auto px-6 py-16">
+        <div className="grid md:grid-cols-3 gap-6">
+
+          {/* FREE */}
+          <div className="rounded-2xl border-2 border-gray-100 p-8">
+            <div className="text-3xl mb-4">🆓</div>
+            <div className="font-bold text-navy text-xl mb-1">Free</div>
             <div className="text-4xl font-bold text-navy mb-1">$0</div>
-            <div className="text-xs text-gray-400">forever</div>
+            <div className="text-sm text-gray-400 mb-6">Always free</div>
+            <ul className="space-y-3 text-sm text-gray-600 mb-8">
+              {[
+                'Browse all 400+ blueprints',
+                'See every task in full',
+                'Email required to unlock',
+                'Share link with Dengine watermark',
+                'All 24 categories',
+              ].map(f => (
+                <li key={f} className="flex items-start gap-2">
+                  <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span> {f}
+                </li>
+              ))}
+            </ul>
+            <a href="/browse"
+              className="block text-center border-2 border-navy text-navy font-bold py-3 rounded-xl hover:bg-navy hover:text-white transition-all">
+              Browse free →
+            </a>
           </div>
-          <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-8">
-            {[
-              '3 blueprints per month',
-              'All 266 event types',
-              'Layer view',
-              'Share link (with Dengine watermark)',
-            ].map(item => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="text-green-500 mt-0.5">✓</span>{item}
-              </li>
-            ))}
-          </ul>
-          <a
-            href="/custom"
-            className="block text-center bg-gray-100 text-navy py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-colors"
-          >
-            Start free →
-          </a>
-        </div>
 
-        {/* Pro */}
-        <div className="bg-navy rounded-2xl p-8 flex flex-col relative">
-          <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold text-navy text-xs font-bold px-3 py-1 rounded-full">
-            Most popular
+          {/* PERSONAL */}
+          <div className="rounded-2xl border-2 border-gray-100 p-8">
+            <div className="text-3xl mb-4">🎉</div>
+            <div className="font-bold text-navy text-xl mb-1">Personal</div>
+            <div className="text-4xl font-bold text-navy mb-1">$9.99</div>
+            <div className="text-sm text-gray-400 mb-6">One-time per event</div>
+            <p className="text-xs text-gray-400 italic mb-4">
+              Weddings, parties, birthdays, school events, community fairs, charity runs
+            </p>
+            <ul className="space-y-3 text-sm text-gray-600 mb-8">
+              {[
+                'Everything in Free',
+                'Customise any task, owner or timing',
+                'Save your version permanently',
+                'Share link without watermark',
+                'Print-ready view',
+              ].map(f => (
+                <li key={f} className="flex items-start gap-2">
+                  <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span> {f}
+                </li>
+              ))}
+            </ul>
+            <a href="/custom"
+              className="block text-center bg-navy text-white font-bold py-3 rounded-xl hover:bg-navy/90 transition-all">
+              Get Personal →
+            </a>
           </div>
-          <div className="mb-6">
-            <div className="text-sm font-semibold text-white/50 uppercase tracking-wide mb-2">Pro</div>
-            <div className="text-4xl font-bold text-white mb-1">$12</div>
-            <div className="text-xs text-white/40">per month · or $99/year (save 30%)</div>
-          </div>
-          <ul className="space-y-3 text-sm text-white/80 flex-1 mb-8">
-            {[
-              'Unlimited blueprints',
-              'All 266 event types',
-              'Layer, sub-project & timeline views',
-              'Event date planning + backwards timeline',
-              'Clean share links (no watermark)',
-              'PDF export',
-            ].map(item => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="text-gold mt-0.5">✓</span>{item}
-              </li>
-            ))}
-          </ul>
-          <a
-            href="/waitlist"
-            className="block text-center bg-gold text-navy py-3 rounded-xl font-semibold text-sm hover:bg-yellow-300 transition-colors"
-          >
-            Get Pro →
-          </a>
-        </div>
 
-        {/* Teams */}
-        <div className="bg-white rounded-2xl border border-gray-200 p-8 flex flex-col">
-          <div className="mb-6">
-            <div className="text-sm font-semibold text-gray-500 uppercase tracking-wide mb-2">Teams</div>
-            <div className="text-4xl font-bold text-navy mb-1">$39</div>
-            <div className="text-xs text-gray-400">per month</div>
-          </div>
-          <ul className="space-y-3 text-sm text-gray-600 flex-1 mb-8">
-            {[
-              'Everything in Pro',
-              'Up to 10 organisers',
-              'Live task claiming dashboard',
-              'Recurring event templates',
-            ].map(item => (
-              <li key={item} className="flex items-start gap-2">
-                <span className="text-green-500 mt-0.5">✓</span>{item}
-              </li>
-            ))}
-          </ul>
-          <a
-            href="mailto:hello@dengine.app"
-            className="block text-center bg-gray-100 text-navy py-3 rounded-xl font-semibold text-sm hover:bg-gray-200 transition-colors"
-          >
-            Talk to us →
-          </a>
-        </div>
-      </div>
-
-      <p className="text-center text-sm text-gray-500 mb-16">
-        Need a district or enterprise plan? We work with schools, councils, and event agencies.{' '}
-        <a href="mailto:hello@dengine.app" className="text-navy underline">Get in touch →</a>
-      </p>
-
-      {/* FAQ */}
-      <div className="max-w-2xl mx-auto">
-        <h2 className="text-xl font-bold text-navy mb-6">Questions</h2>
-        <div className="space-y-2">
-          {FAQ.map((item, i) => (
-            <div key={i} className="bg-white rounded-xl border border-gray-100 overflow-hidden">
-              <button
-                onClick={() => setOpenFaq(openFaq === i ? null : i)}
-                className="w-full text-left px-6 py-4 flex items-center justify-between gap-4"
-              >
-                <span className="font-medium text-gray-900 text-sm">{item.q}</span>
-                <span className="text-gray-400 flex-shrink-0">{openFaq === i ? '−' : '+'}</span>
-              </button>
-              {openFaq === i && (
-                <div className="px-6 pb-4 text-sm text-gray-500 leading-relaxed">{item.a}</div>
-              )}
+          {/* PROFESSIONAL */}
+          <div className="rounded-2xl border-2 border-gold p-8 relative">
+            <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold text-navy text-xs font-bold px-4 py-1 rounded-full whitespace-nowrap">
+              Best for teams
             </div>
-          ))}
+            <div className="text-3xl mb-4">💼</div>
+            <div className="font-bold text-navy text-xl mb-1">Professional</div>
+            <div className="text-4xl font-bold text-navy mb-1">$59</div>
+            <div className="text-sm text-gray-400 mb-6">One-time per event</div>
+            <p className="text-xs text-gray-400 italic mb-4">
+              Corporate events, conferences, galas, product launches, trade shows, award ceremonies
+            </p>
+            <ul className="space-y-3 text-sm text-gray-600 mb-8">
+              {[
+                'Everything in Personal',
+                'Gantt timeline view',
+                'Sub-project breakdown',
+                'Event date & backwards planning',
+                'PDF export',
+                'Location & spend context',
+                'Multiple organisers',
+              ].map(f => (
+                <li key={f} className="flex items-start gap-2">
+                  <span className="text-green-500 mt-0.5 flex-shrink-0">✓</span> {f}
+                </li>
+              ))}
+            </ul>
+            <a href="/custom"
+              className="block text-center bg-gold text-navy font-bold py-3 rounded-xl hover:bg-yellow-300 transition-all">
+              Get Professional →
+            </a>
+          </div>
+
+        </div>
+
+        {/* Enterprise */}
+        <div className="mt-8 text-center p-6 bg-[#f5f0e8] rounded-2xl">
+          <p className="text-navy font-semibold mb-1">
+            Running events at scale? Planning across a district, council or agency?
+          </p>
+          <p className="text-gray-500 text-sm mb-3">
+            We work with organisations that run 10+ events a year. Volume pricing and white-label options available.
+          </p>
+          <a href="mailto:hello@dengine.app" className="text-gold font-semibold hover:underline text-sm">Talk to us →</a>
+        </div>
+
+        {/* FAQ */}
+        <div className="mt-16 max-w-2xl mx-auto">
+          <h2 className="text-2xl font-bold text-navy mb-8 text-center">Common questions</h2>
+          <div className="space-y-6">
+            {[
+              {
+                q: 'Is the free tier genuinely useful?',
+                a: 'Yes. You can browse every blueprint, read every task in full, and share a link with your team — all for free. The email gate unlocks the complete view. No credit card, no trial period.',
+              },
+              {
+                q: 'What is the difference between Personal and Professional?',
+                a: 'Personal is for events where you are organising alone or with a small group — weddings, parties, school events, community fairs. Professional adds the tools a team needs: Gantt timeline, sub-project breakdown, PDF export and backwards date planning from your event date.',
+              },
+              {
+                q: 'What does "one-time per event" mean exactly?',
+                a: 'You pay once for a specific event blueprint. You can return to it, edit it and share it as many times as you like. If you plan a second event, you pay again. There is no subscription.',
+              },
+              {
+                q: 'Which tier applies to my event?',
+                a: 'Personal covers personal, community and school events. Professional covers corporate, conference, fundraising gala, government and large-scale events. If you are unsure, start with the free browse — the checkout will suggest the right tier.',
+              },
+              {
+                q: 'Can I upgrade from Personal to Professional later?',
+                a: 'Yes. Pay the difference ($49) at any point and your blueprint upgrades instantly.',
+              },
+              {
+                q: 'What is the Dengine watermark?',
+                a: 'Free shared blueprints include a small "Planned with Dengine" footer on the share link. Personal and Professional remove it entirely.',
+              },
+            ].map(faq => (
+              <div key={faq.q} className="border-b border-gray-100 pb-6">
+                <h3 className="font-bold text-navy mb-2">{faq.q}</h3>
+                <p className="text-gray-500 text-sm leading-relaxed">{faq.a}</p>
+              </div>
+            ))}
+          </div>
         </div>
       </div>
     </main>

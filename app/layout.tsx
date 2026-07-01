@@ -21,11 +21,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <span className="font-bold text-navy text-base">Dengine</span>
           </a>
           <div className="flex items-center gap-8 text-sm text-gray-500">
-            <a href="/browse" className="hover:text-navy transition-colors">Browse</a>
-            <a href="/custom" className="hover:text-navy transition-colors">Plan an event</a>
+            <a href="/browse" className="hover:text-navy transition-colors">Browse Blueprints</a>
+            <a href="/custom" className="hover:text-navy transition-colors">Create an Event</a>
             <a href="/pricing" className="hover:text-navy transition-colors">Pricing</a>
-            <a href="/custom" className="bg-navy text-white font-semibold px-4 py-2 rounded-lg hover:bg-navy/90 transition-colors text-xs">
-              Get started
+            <a href="/browse" className="bg-gold text-navy font-bold px-4 py-2 rounded-lg hover:bg-yellow-300 transition-colors text-xs">
+              Get started free
             </a>
           </div>
         </nav>
