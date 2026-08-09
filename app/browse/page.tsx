@@ -1,16 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { ArrowRight, CalendarRange, Search } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-
-const ICONS: Record<string, string> = {
-  'Corporate & Business': '▦',
-  'Trade & Professional': '▤',
-  Fundraising: '◇',
-  'Hospitality & Food': '◫',
-  'Digital & Hybrid': '◉',
-  'Education & Youth': '□',
-}
 
 export default function BrowsePage() {
   const [categories, setCategories] = useState<{ name: string; event_count: number }[]>([])
@@ -22,53 +14,95 @@ export default function BrowsePage() {
       .select('category')
       .then(({ data }) => {
         const counts: Record<string, number> = {}
-        ;(data || []).forEach((r: { category: string }) => {
-          if (r.category) counts[r.category] = (counts[r.category] || 0) + 1
+        ;(data || []).forEach((row: { category: string }) => {
+          if (row.category) counts[row.category] = (counts[row.category] || 0) + 1
         })
+
         setCategories(
           Object.entries(counts)
             .map(([name, event_count]) => ({ name, event_count }))
-            .sort((a, b) => a.name.localeCompare(b.name))
+            .sort((a, b) => b.event_count - a.event_count || a.name.localeCompare(b.name))
         )
         setLoading(false)
       })
   }, [])
 
   return (
-    <main className="bg-white min-h-screen">
-      <section className="bg-[#f5f0e8] px-6 py-16">
-        <div className="max-w-4xl mx-auto text-center">
-          <p className="text-xs font-bold tracking-[0.2em] text-gold uppercase mb-4">Reference Library</p>
-          <h1 className="text-4xl font-bold text-navy mb-4">Start from event knowledge, not a blank page.</h1>
-          <p className="text-gray-500 max-w-2xl mx-auto">
-            Browse the event reference library for inspiration and coverage. The core DEngine product adapts event logic into a tailored execution plan with deadlines, dependencies, risks and approvals.
-          </p>
-          <a href="/custom" className="inline-block mt-7 bg-navy text-white font-bold text-sm px-6 py-3 rounded-xl">
-            Build a tailored execution plan →
+    <main className="bg-[#fbfaf7]">
+      <section className="border-b border-black/[0.055] bg-[#f5f2ea]">
+        <div className="shell grid items-end gap-8 py-16 lg:grid-cols-[1fr_auto] lg:py-20">
+          <div className="max-w-3xl">
+            <p className="eyebrow">Event planning reference library</p>
+            <h1 className="display mt-4 text-5xl font-black leading-[1.02] sm:text-6xl">
+              Start from event knowledge.
+              <span className="block text-[#8b7440]">Then tailor the operating plan.</span>
+            </h1>
+            <p className="mt-5 max-w-2xl text-lg leading-8 text-[#6d7889]">
+              Browse event types for coverage and inspiration. When you are ready to plan,
+              DEngine adapts the event context into a dependency-aware execution model.
+            </p>
+          </div>
+          <a href="/custom" className="btn-primary">
+            Build a tailored plan <ArrowRight className="ml-2" size={15} />
           </a>
         </div>
       </section>
 
-      <section className="max-w-5xl mx-auto px-6 py-14">
+      <section className="shell py-14 sm:py-18">
+        <div className="mb-7 flex items-center justify-between gap-5">
+          <div>
+            <p className="text-sm font-black text-[#23324a]">Browse by category</p>
+            <p className="mt-1 text-xs text-[#8b94a2]">Reference event models already available in DEngine.</p>
+          </div>
+          <div className="hidden items-center gap-2 rounded-full border border-black/[0.055] bg-white px-3 py-2 text-xs font-bold text-[#7b8594] sm:flex">
+            <Search size={13} /> Choose a category
+          </div>
+        </div>
+
         {loading ? (
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
-            {[...Array(9)].map((_, i) => <div key={i} className="h-28 bg-gray-50 animate-pulse rounded-2xl" />)}
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            {[...Array(9)].map((_, i) => (
+              <div key={i} className="h-36 animate-pulse rounded-[24px] border border-black/[0.04] bg-white" />
+            ))}
           </div>
         ) : (
-          <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4">
+          <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {categories.map(cat => (
               <a
                 key={cat.name}
                 href={`/browse/${encodeURIComponent(cat.name)}`}
-                className="rounded-2xl border border-gray-100 p-6 hover:shadow-md hover:-translate-y-0.5 transition-all"
+                className="group rounded-[24px] border border-black/[0.055] bg-white p-6 transition-all hover:-translate-y-0.5 hover:border-[#c8aa5b] hover:shadow-xl hover:shadow-black/[0.035]"
               >
-                <div className="text-xl text-gold mb-4">{ICONS[cat.name] || '◌'}</div>
-                <h2 className="font-bold text-navy mb-1">{cat.name}</h2>
-                <p className="text-xs text-gray-400">{cat.event_count} reference event types</p>
+                <div className="flex items-start justify-between gap-4">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f3ead2] text-[#8b6b23]">
+                    <CalendarRange size={17} />
+                  </span>
+                  <span className="text-xs font-black text-[#a0a7b1]">{cat.event_count} types</span>
+                </div>
+                <h2 className="mt-5 text-lg font-black tracking-[-0.025em] text-[#23324a] group-hover:text-[#80631f]">
+                  {cat.name}
+                </h2>
+                <p className="mt-2 text-sm leading-6 text-[#7a8595]">
+                  Explore event references, then generate a plan from your own fixed date and operating context.
+                </p>
+                <span className="mt-5 inline-flex items-center text-sm font-black text-[#9a7b31]">
+                  Explore category <ArrowRight className="ml-2" size={14} />
+                </span>
               </a>
             ))}
           </div>
         )}
+
+        <div className="mt-12 rounded-[30px] bg-[#15233f] p-7 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-9">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.15em] text-[#efcd6d]">Your event is more specific?</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em]">Describe it instead of searching for a perfect template.</h2>
+            <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">
+              DEngine can use a reference model where available and adapt it to the objective, scale, format, venue status and fixed date.
+            </p>
+          </div>
+          <a href="/custom" className="btn-signal mt-6 shrink-0 sm:mt-0">Build my plan →</a>
+        </div>
       </section>
     </main>
   )

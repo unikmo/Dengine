@@ -1,6 +1,8 @@
 'use client'
+
 import { useEffect, useState } from 'react'
-import { ChevronRight } from 'lucide-react'
+import { ArrowRight, ChevronRight, Layers3 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
 import type { Event } from '@/types'
 
@@ -11,12 +13,17 @@ const SCALE_RANGE: Record<string, string> = {
   Mega: '5,000+ people',
 }
 
-export default function CategoryPage({ params }: { params: { category: string } }) {
+export default function CategoryPage() {
+  const params = useParams<{ category: string }>()
+  const category = decodeURIComponent(params.category || '')
+
   const [events, setEvents] = useState<Event[]>([])
   const [loading, setLoading] = useState(true)
-  const category = decodeURIComponent(params.category)
 
   useEffect(() => {
+    if (!category) return
+
+    setLoading(true)
     supabase
       .from('events')
       .select('*')
@@ -24,75 +31,119 @@ export default function CategoryPage({ params }: { params: { category: string } 
       .eq('has_tasks', true)
       .order('name')
       .then(({ data }) => {
-        setEvents(data || [])
+        setEvents((data || []) as Event[])
         setLoading(false)
       })
   }, [category])
 
   return (
-    <main className="max-w-3xl mx-auto px-6 py-16">
-      <div className="flex items-center gap-2 text-sm text-gray-400 mb-10">
-        <a href="/browse" className="hover:text-navy transition-colors">Browse</a>
-        <ChevronRight size={14} />
-        <span className="text-navy font-medium">{category}</span>
-      </div>
+    <main className="bg-[#fbfaf7]">
+      <section className="border-b border-black/[0.055] bg-[#f5f2ea]">
+        <div className="shell py-14 sm:py-16">
+          <nav className="mb-7 flex items-center gap-2 text-xs font-bold text-[#8992a0]" aria-label="Breadcrumb">
+            <a href="/browse" className="transition-colors hover:text-[#15233f]">Event library</a>
+            <ChevronRight size={13} />
+            <span className="text-[#80631f]">{category}</span>
+          </nav>
 
-      <h1 className="text-3xl font-bold text-navy mb-1">{category}</h1>
-      {!loading && (
-        <p className="text-gray-400 text-sm mb-10">{events.length} blueprints ready</p>
-      )}
+          <p className="eyebrow">Event planning reference category</p>
+          <h1 className="display mt-4 max-w-4xl text-4xl font-black leading-[1.02] sm:text-5xl">
+            {category}
+          </h1>
+          <p className="mt-4 max-w-2xl text-base leading-7 text-[#6d7889]">
+            Use these event references to understand scope and coverage. For a real event,
+            DEngine can adapt the model to your fixed date, scale, format, venue status and objectives.
+          </p>
 
-      {loading ? (
-        <div className="space-y-3">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="bg-white rounded-2xl h-24 animate-pulse" />
-          ))}
-        </div>
-      ) : events.length === 0 ? (
-        <div className="text-center py-16">
-          <p className="text-gray-400 mb-4">No blueprints ready for this category yet.</p>
-          <a href="/custom" className="text-navy font-medium hover:underline text-sm">
-            Describe your event and we'll build one →
+          <a href="/custom" className="btn-primary mt-7">
+            Build a tailored execution plan <ArrowRight className="ml-2" size={15} />
           </a>
         </div>
-      ) : (
-        <div className="space-y-3">
-          {events.map(ev => (
-            <a
-              key={ev.id}
-              href={`/events/${ev.id}`}
-              className="bg-white rounded-2xl px-6 py-5 flex items-center justify-between border border-transparent hover:border-gray-200 hover:shadow-sm transition-all group block"
-            >
-              <div className="flex-1 min-w-0 pr-6">
-                <div className="font-semibold text-gray-900 group-hover:text-navy transition-colors mb-2">
-                  {ev.name}
-                </div>
-                <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-gray-400">
-                  <span>{ev.subcategory}</span>
-                  <span>·</span>
-                  <span>{ev.scale} <span className="text-gray-300">({SCALE_RANGE[ev.scale]})</span></span>
-                  <span>·</span>
-                  <span>{'★'.repeat(ev.complexity)}{'☆'.repeat(5 - ev.complexity)}</span>
-                  <span>·</span>
-                  <span>Plan {ev.planning_weeks === 0 ? 'anytime' : `${ev.planning_weeks}w ahead`}</span>
-                </div>
-              </div>
-              <div className="flex items-center gap-3 flex-shrink-0">
-                <span className="text-xs text-navy font-semibold border border-navy/20 bg-navy/5 px-3 py-1.5 rounded-lg group-hover:bg-navy group-hover:text-white transition-all">
-                  See tasks →
-                </span>
-              </div>
-            </a>
-          ))}
-        </div>
-      )}
+      </section>
 
-      <div className="mt-14 text-center">
-        <p className="text-sm text-gray-400 mb-3">Need something more specific?</p>
-        <a href="/custom" className="text-navy font-semibold text-sm hover:underline">
-          Build a custom blueprint →
-        </a>
-      </div>
+      <section className="shell py-12 sm:py-14">
+        <div className="mb-6 flex items-end justify-between gap-5">
+          <div>
+            <p className="text-sm font-black text-[#23324a]">Reference event types</p>
+            {!loading && (
+              <p className="mt-1 text-xs text-[#8a93a2]">
+                {events.length} {events.length === 1 ? 'event model' : 'event models'} currently available
+              </p>
+            )}
+          </div>
+        </div>
+
+        {loading ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="h-40 animate-pulse rounded-[24px] border border-black/[0.04] bg-white" />
+            ))}
+          </div>
+        ) : events.length === 0 ? (
+          <div className="rounded-[28px] border border-black/[0.055] bg-white p-10 text-center">
+            <p className="text-lg font-black text-[#23324a]">No reference model is ready in this category yet.</p>
+            <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#7a8595]">
+              You do not need to wait for the library. Describe the event and build a tailored execution plan instead.
+            </p>
+            <a href="/custom" className="btn-primary mt-6">Build my plan →</a>
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2">
+            {events.map(event => (
+              <a
+                key={event.id}
+                href={`/events/${event.id}`}
+                className="group rounded-[26px] border border-black/[0.055] bg-white p-6 transition-all hover:-translate-y-0.5 hover:border-[#c8aa5b] hover:shadow-xl hover:shadow-black/[0.035]"
+              >
+                <div className="flex items-start justify-between gap-5">
+                  <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#f2e7c7] text-[#80631f]">
+                    <Layers3 size={17} />
+                  </span>
+                  <span className="rounded-full bg-[#f5f2ea] px-2.5 py-1 text-[10px] font-black text-[#7b8492]">
+                    {event.scale}
+                  </span>
+                </div>
+
+                <h2 className="mt-5 text-xl font-black tracking-[-0.025em] text-[#23324a] group-hover:text-[#80631f]">
+                  {event.name}
+                </h2>
+                <p className="mt-2 line-clamp-2 text-sm leading-6 text-[#707b8c]">
+                  {event.description}
+                </p>
+
+                <div className="mt-5 grid grid-cols-2 gap-2 text-xs">
+                  <div className="rounded-xl bg-[#f8f6f0] p-3">
+                    <p className="font-bold text-[#949ca8]">Typical scale</p>
+                    <p className="mt-1 font-black text-[#4f5c70]">{SCALE_RANGE[event.scale] || event.scale}</p>
+                  </div>
+                  <div className="rounded-xl bg-[#f8f6f0] p-3">
+                    <p className="font-bold text-[#949ca8]">Planning horizon</p>
+                    <p className="mt-1 font-black text-[#4f5c70]">
+                      {event.planning_weeks === 0 ? 'Flexible' : `${event.planning_weeks} weeks`}
+                    </p>
+                  </div>
+                </div>
+
+                <span className="mt-5 inline-flex items-center text-sm font-black text-[#9a7b31]">
+                  View reference plan <ArrowRight className="ml-2" size={14} />
+                </span>
+              </a>
+            ))}
+          </div>
+        )}
+
+        <div className="mt-12 rounded-[30px] bg-[#15233f] p-7 text-white sm:flex sm:items-center sm:justify-between sm:gap-8 sm:p-9">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#efcd6d]">Do not plan from a generic template</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em]">
+              Use the library to understand scope. Use DEngine to plan the actual event.
+            </h2>
+          </div>
+          <a href="/custom" className="btn-signal mt-6 shrink-0 sm:mt-0">
+            Build my plan →
+          </a>
+        </div>
+      </section>
     </main>
   )
 }

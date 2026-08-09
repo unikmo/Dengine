@@ -1,105 +1,143 @@
 'use client'
-import { useEffect, useState } from 'react'
+
+import { useEffect, useMemo, useState } from 'react'
+import { ArrowRight, CheckCircle2 } from 'lucide-react'
+import { useParams } from 'next/navigation'
 import { supabase } from '@/lib/supabase'
-import { LAYER_COLORS } from '@/types'
 import type { GeneratedTask, Layer } from '@/types'
 
-const layers: Layer[] = ['Promotion', 'Setup', 'Execution', 'Cleanup']
+const LAYERS: Layer[] = ['Promotion', 'Setup', 'Execution', 'Cleanup']
 
-export default function SharePage({ params }: { params: { code: string } }) {
+export default function SharePage() {
+  const params = useParams<{ code: string }>()
+  const code = params.code
+
   const [blueprint, setBlueprint] = useState<any | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
+    if (!code) return
+
+    setLoading(true)
     supabase
       .from('blueprints')
       .select('*')
-      .eq('share_code', params.code)
+      .eq('share_code', code)
       .single()
       .then(({ data, error }) => {
         if (error) console.error('[share] fetch error:', error)
         setBlueprint(data)
         setLoading(false)
       })
-  }, [params.code])
+  }, [code])
+
+  const tasks: GeneratedTask[] = blueprint?.tasks || []
+
+  const totalMinutes = useMemo(
+    () => tasks.reduce((sum, task) => sum + task.time_minutes, 0),
+    [tasks]
+  )
+
+  const totalHours = Math.round((totalMinutes / 60) * 10) / 10
+
+  const tasksByLayer = useMemo(() => {
+    return LAYERS.reduce((acc, layer) => {
+      acc[layer] = tasks.filter(task => task.layer === layer)
+      return acc
+    }, {} as Record<Layer, GeneratedTask[]>)
+  }, [tasks])
 
   if (loading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="text-gray-400 animate-pulse">Loading blueprint...</div>
-      </div>
+      <main className="grid min-h-[62vh] place-items-center bg-[#fbfaf7]">
+        <div className="text-center">
+          <div className="mx-auto h-9 w-9 animate-spin rounded-full border-4 border-[#e8e4da] border-t-[#9d7c2f]" />
+          <p className="mt-4 text-sm font-bold text-[#8b94a2]">Loading shared plan…</p>
+        </div>
+      </main>
     )
   }
 
   if (!blueprint) {
     return (
-      <div className="min-h-screen flex items-center justify-center text-center px-6">
+      <main className="grid min-h-[62vh] place-items-center bg-[#fbfaf7] px-6 text-center">
         <div>
-          <p className="text-gray-500 mb-4">We couldn't find that blueprint.</p>
-          <a href="/custom" className="text-navy underline text-sm">Build your own →</a>
+          <p className="eyebrow">Shared plan unavailable</p>
+          <h1 className="display mt-3 text-4xl font-black text-[#15233f]">We could not find this execution plan.</h1>
+          <a href="/custom" className="btn-primary mt-6">Build your own plan →</a>
         </div>
-      </div>
+      </main>
     )
   }
 
-  const tasks: GeneratedTask[] = blueprint.tasks || []
-  const totalMinutes = tasks.reduce((s: number, t: GeneratedTask) => s + t.time_minutes, 0)
-  const totalHours = Math.round((totalMinutes / 60) * 10) / 10
-
-  const tasksByLayer = layers.reduce((acc, l) => {
-    acc[l] = tasks.filter(t => t.layer === l)
-    return acc
-  }, {} as Record<string, GeneratedTask[]>)
-
   return (
-    <main className="max-w-2xl mx-auto px-6 py-10">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-navy mb-1">{blueprint.event_name}</h1>
-        <p className="text-gray-400 text-sm">
-          {tasks.length} tasks · {totalHours}h · {blueprint.guest_count} guests
-        </p>
-      </div>
+    <main className="bg-[#fbfaf7]">
+      <section className="border-b border-black/[0.055] bg-[#f5f2ea]">
+        <div className="shell py-12 sm:py-16">
+          <p className="eyebrow">Shared DEngine plan</p>
+          <h1 className="display mt-4 text-4xl font-black leading-[1.02] sm:text-5xl">
+            {blueprint.event_name}
+          </h1>
+          <div className="mt-4 flex flex-wrap gap-4 text-sm font-bold text-[#768192]">
+            <span>{tasks.length} tasks</span>
+            <span>·</span>
+            <span>{totalHours}h estimated effort</span>
+            {blueprint.guest_count && (
+              <>
+                <span>·</span>
+                <span>{blueprint.guest_count} attendees</span>
+              </>
+            )}
+          </div>
+        </div>
+      </section>
 
-      <div className="space-y-6">
-        {layers.map(layer => {
-          const lt = tasksByLayer[layer] || []
-          if (!lt.length) return null
-          const colors = LAYER_COLORS[layer]
-          return (
-            <div key={layer}>
-              <div className={`inline-flex items-center gap-2 px-4 py-1.5 rounded-lg mb-3 text-sm font-bold ${colors.bg} ${colors.text} border ${colors.border}`}>
-                {layer} <span className="font-normal opacity-60">({lt.length})</span>
-              </div>
-              <div className="space-y-2">
-                {lt.map((task, i) => (
-                  <div key={i} className="bg-white rounded-xl border border-gray-100 p-4">
-                    <div className="flex items-start justify-between gap-4">
-                      <div className="flex-1">
-                        <p className="font-semibold text-gray-900 text-sm">{task.title}</p>
-                        <p className="text-xs text-gray-500 mt-1">{task.who}</p>
-                        <p className="text-xs text-gray-400 mt-1 italic">{task.definition_of_done}</p>
-                      </div>
-                      <span className={`text-xs px-2 py-0.5 rounded-full flex-shrink-0 ${colors.bg} ${colors.text}`}>
-                        {task.time_minutes} min
-                      </span>
-                    </div>
+      <section className="shell py-10 sm:py-12">
+        <div className="space-y-7">
+          {LAYERS.map(layer => {
+            const layerTasks = tasksByLayer[layer] || []
+            if (!layerTasks.length) return null
+
+            return (
+              <section key={layer} className="overflow-hidden rounded-[26px] border border-black/[0.055] bg-white">
+                <div className="flex items-center justify-between border-b border-black/[0.055] bg-[#f8f6f0] px-5 py-4">
+                  <div>
+                    <p className="text-[10px] font-black uppercase tracking-[0.12em] text-[#9a7b31]">{layer}</p>
+                    <p className="mt-1 text-sm font-black text-[#26344c]">{layerTasks.length} tasks</p>
                   </div>
-                ))}
-              </div>
-            </div>
-          )
-        })}
-      </div>
+                </div>
 
-      <div className="mt-12 pt-8 border-t border-gray-100 text-center">
-        <p className="text-xs text-gray-400 mb-3">Planned with Dengine</p>
-        <a
-          href="/custom"
-          className="inline-block bg-navy text-white px-5 py-2.5 rounded-xl text-sm font-semibold hover:bg-navy/90 transition-colors"
-        >
-          Build your own blueprint →
-        </a>
-      </div>
+                <div className="divide-y divide-black/[0.055]">
+                  {layerTasks.map((task, index) => (
+                    <article key={task.id || index} className="p-5">
+                      <div className="flex items-start gap-3">
+                        <CheckCircle2 size={18} className="mt-0.5 shrink-0 text-[#9a7b31]" />
+                        <div className="min-w-0">
+                          <p className="text-sm font-black text-[#26344c]">{task.title}</p>
+                          <p className="mt-1 text-xs font-bold text-[#778293]">{task.who}</p>
+                          <p className="mt-2 text-xs leading-5 text-[#8a93a2]">{task.definition_of_done}</p>
+                        </div>
+                      </div>
+                    </article>
+                  ))}
+                </div>
+              </section>
+            )
+          })}
+        </div>
+
+        <div className="mt-10 rounded-[28px] bg-[#15233f] p-7 text-white sm:flex sm:items-center sm:justify-between sm:gap-8">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#efcd6d]">Plan another event</p>
+            <h2 className="mt-2 text-2xl font-black tracking-[-0.03em]">
+              Build the event operating model from your own fixed date.
+            </h2>
+          </div>
+          <a href="/custom" className="btn-signal mt-6 shrink-0 sm:mt-0">
+            Build my plan <ArrowRight className="ml-2" size={15} />
+          </a>
+        </div>
+      </section>
     </main>
   )
 }
