@@ -1,5 +1,5 @@
 import Anthropic from '@anthropic-ai/sdk'
-import { IntakeAnswers, GeneratedTask, Layer, Event, SmartContext } from '@/types'
+import { IntakeAnswers, GeneratedTask, Layer, Event, SmartContext, RiskLevel } from '@/types'
 import { weeksBeforeToDate } from '@/lib/dates'
 
 export { calculateSuggestedStart, formatDate, formatDateShort, weeksBeforeToDate } from '@/lib/dates'
@@ -8,130 +8,164 @@ const client = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
+function normaliseRisk(value: unknown): RiskLevel {
+  return value === 'critical' || value === 'high' || value === 'medium' || value === 'low'
+    ? value
+    : 'medium'
+}
+
 export async function generateBlueprint(
   event: Event,
   intake: IntakeAnswers,
   smart?: SmartContext
 ): Promise<GeneratedTask[]> {
-  const budgetLabels = ['Cost-Efficient', 'Balanced', 'Premium', 'Luxury', 'Extravagant']
+  const budgetLabels = ['Volunteer / zero-cost', 'Cost-efficient', 'Balanced', 'Premium', 'Luxury', 'Extravagant']
+  const hasTimeline = Boolean(smart?.eventDate)
 
-  const locationLine = smart?.city && smart?.country
-    ? `Location: ${smart.city}, ${smart.country}`
-    : ''
-
-  const spendLine =
+  const contextLines = [
+    smart?.city && smart?.country ? `Location: ${smart.city}, ${smart.country}` : '',
     smart?.spendType === 'amount' && smart.spendAmount
       ? `Spend per guest: $${smart.spendAmount}`
       : smart?.spendType === 'volunteer'
-      ? 'Spend per guest: Volunteer/zero-cost'
-      : ''
+      ? 'Spend per guest: volunteer / near-zero-cost'
+      : '',
+    smart?.eventDate ? `Fixed event date: ${smart.eventDate}` : '',
+    smart?.planningStart ? `Planning start date: ${smart.planningStart}` : '',
+  ].filter(Boolean).join('\n')
 
-  const eventDateLine = smart?.eventDate
-    ? `Event date: ${smart.eventDate}`
-    : ''
+  const prompt = `You are the event-operations reasoning engine inside DEngine.
 
-  const planningStartLine = smart?.planningStart
-    ? `Planning start date: ${smart.planningStart}`
-    : ''
+DEngine is NOT a checklist generator. It produces an Event Execution Graph: a professional operating model showing what must become true for the event to be ready, how work depends on other work, when it must happen, who owns it, which approvals gate progress, what proves completion, and what happens if it slips.
 
-  const hasTimeline = !!(smart?.eventDate)
-
-  const prompt = `You are an expert event planner using the Event Engine framework.
-
-EVENT: ${event.name}
-Category: ${event.category} | Scale: ${event.scale} | Blueprint type: ${event.blueprint}
+EVENT PROFILE
+Name: ${event.name}
+Category: ${event.category}
+Scale: ${event.scale}
+Event model: ${event.blueprint}
 Description: ${event.description}
-Key operational dimensions: ${event.key_dimensions.join(', ')}
+Operational dimensions: ${event.key_dimensions.join(', ')}
 Primary cost driver: ${event.primary_cost}
-Key risks: ${event.key_risks.join(', ')}
-${locationLine}
-${spendLine}
-${eventDateLine}
-${planningStartLine}
+Known risks: ${event.key_risks.join(', ')}
+${contextLines}
 
-INTAKE ANSWERS:
-- Guest count: ${intake.guest_count}
-- Budget level: ${budgetLabels[intake.budget_level] ?? budgetLabels[0]} (${intake.budget_level}/5)
-- First time running this event: ${intake.is_first_time ? 'Yes — add extra preparation tasks' : 'No — assume experience'}
-- Volunteer-driven: ${intake.is_volunteer_driven ? 'Yes — ALL tasks must be 15 minutes or less, independently claimable' : 'No — tasks can be role-based and longer'}
-- Outdoor: ${intake.is_outdoor ? 'Yes — include weather contingency tasks' : 'No'}
+EVENT CONTEXT
+Guest count: ${intake.guest_count}
+Budget: ${budgetLabels[intake.budget_level] ?? 'Balanced'} (${intake.budget_level}/5)
+First time running this event: ${intake.is_first_time ? 'Yes' : 'No'}
+Volunteer-driven: ${intake.is_volunteer_driven ? 'Yes' : 'No'}
+Outdoor: ${intake.is_outdoor ? 'Yes' : 'No'}
+Additional context: ${JSON.stringify(intake.custom_answers)}
 
-Generate a complete task breakdown for this event. Organize tasks across these 4 layers:
-- Promotion (pre-event communication, marketing, registration)
-- Setup (venue, equipment, logistics preparation)
-- Execution (day-of running, staffing, management)
-- Cleanup (teardown, follow-up, documentation)
+PLANNING RULES
+1. Produce 28–55 operational tasks. Prefer completeness and causal structure over generic advice.
+2. Group tasks into 4–8 professional workstreams such as Venue & Logistics, Program & Speakers, Registration & Guest Experience, Production & AV, Marketing & Communications, Commercial / Sponsors, Finance & Procurement, Event-Day Operations.
+3. Every task must have a unique stable id: T01, T02, T03...
+4. Dependencies must reference only earlier task ids in this same output. Use [] where none exist.
+5. Mark critical_path true only where delay is likely to create downstream schedule risk.
+6. approval_required should be true only when an explicit decision or sign-off gates downstream work; include the likely approver role.
+7. completion_criteria must be objectively testable. evidence_required should state what proves completion (approved file, signed contract, confirmation email, uploaded deck, final attendee list, etc.).
+8. risk_if_missed must describe the operational consequence, not a generic warning.
+9. contingency must be specific and usable.
+10. procurement_category/vendor_scope are null unless an external purchase/vendor is genuinely relevant. If relevant, vendor_scope should be RFQ-ready enough to help source the requirement.
+11. ${hasTimeline
+    ? 'Assign weeks_before_event as an integer. 0 = event day. Schedule backwards from the fixed event date using realistic lead times and the dependency chain.'
+    : 'Set weeks_before_event to null because no fixed event date is available.'}
+12. If outdoor, hybrid, confidential, regulated, high-attendance, or otherwise operationally special, activate the relevant conditional tasks.
+13. Use Promotion / Setup / Execution / Cleanup only as broad reporting layers; workstream is the more meaningful professional grouping.
+14. Keep task titles action-oriented and specific.
+15. Do not invent legal requirements as facts. Where a permit, insurance or compliance check may be relevant, phrase the task as verifying the applicable requirement.
 
-${intake.is_volunteer_driven
-  ? 'CRITICAL: This is volunteer-driven. Every task MUST be 15 minutes or less. Each task must be independently claimable — someone can say "I will do this one thing" without needing to know anything else. Use specific, concrete language. Include a clear Definition of Done.'
-  : 'Tasks can be role-based and take longer. Include specialist roles where appropriate.'}
-
-Budget level ${intake.budget_level} means:
-${intake.budget_level === 0 ? '- Minimize cost, DIY where possible, maximum volunteer involvement' : ''}
-${intake.budget_level === 1 ? '- Minimal spend, volunteer-first' : ''}
-${intake.budget_level === 2 ? '- Good quality, reasonable spend, mix of volunteer and paid services' : ''}
-${intake.budget_level === 3 ? '- Quality-focused, some professional services, elevated experience' : ''}
-${intake.budget_level === 4 ? '- High-end, professional vendors, premium experience throughout' : ''}
-${intake.budget_level === 5 ? '- Money is secondary, best possible experience, full professional team' : ''}
-
-${intake.is_first_time ? 'Add extra preparation tasks (research, site visits, vendor vetting) that experienced teams would skip.' : ''}
-
-GROUP tasks into 3–6 logical sub-projects (e.g. "Venue & Logistics", "Marketing & Comms", "On-the-day Ops", "Budget & Finance", "Volunteer Coordination"). Every task must belong to a sub_project.
-
-${hasTimeline
-  ? 'TIMELINE: Assign weeks_before_event to each task (integer: how many weeks before the event date this task should be done). Use 0 for event-day tasks, positive integers for tasks done before. A 4-week planning window would have most tasks between 0 and 4. Spread tasks sensibly across the timeline.'
-  : 'Set weeks_before_event: null for all tasks (no event date provided).'}
-
-Respond ONLY with a JSON array of tasks. No preamble, no explanation. Format:
+Return ONLY a valid JSON array. No markdown. Each item must follow this exact shape:
 [
   {
-    "layer": "Promotion",
-    "title": "Draft 3-sentence announcement for class chats",
-    "time_minutes": 15,
-    "who": "Any board member",
-    "definition_of_done": "Announcement text approved and ready to post",
-    "is_volunteer_claimable": true,
-    "sub_project": "Marketing & Comms",
-    "weeks_before_event": 4
+    "id": "T01",
+    "layer": "Setup",
+    "workstream": "Venue & Logistics",
+    "title": "Lock the final room layout",
+    "description": "Confirm stage, seating, registration, catering and accessibility zones against the approved attendance assumption.",
+    "time_minutes": 90,
+    "who": "Event Operations Lead",
+    "depends_on": ["T00"],
+    "approval_required": true,
+    "approver": "Event Director",
+    "completion_criteria": "A final floorplan is approved with no unresolved room-use conflicts.",
+    "evidence_required": "Approved floorplan PDF with version date",
+    "risk_level": "high",
+    "risk_if_missed": "AV design, signage quantities and supplier load-in planning remain blocked.",
+    "contingency": "Freeze a provisional layout and flag only the unresolved zones for controlled revision.",
+    "critical_path": true,
+    "procurement_category": null,
+    "vendor_scope": null,
+    "weeks_before_event": 8,
+    "is_volunteer_claimable": false
   }
 ]`
 
   const response = await client.messages.create({
     model: 'claude-sonnet-4-6',
-    max_tokens: 4000,
+    max_tokens: 8000,
     messages: [{ role: 'user', content: prompt }],
   })
 
   const text = response.content
-    .filter(b => b.type === 'text')
-    .map(b => b.text)
+    .filter(block => block.type === 'text')
+    .map(block => block.text)
     .join('')
 
   const clean = text.replace(/```json|```/g, '').trim()
 
   try {
-    const tasks = JSON.parse(clean) as GeneratedTask[]
+    const raw = JSON.parse(clean) as any[]
 
-    // If event date provided, calculate target_date for each task
-    if (smart?.eventDate) {
-      return tasks.map(t => ({
-        ...t,
+    return raw.map((task, index) => {
+      const completion = String(task.completion_criteria || task.definition_of_done || 'Task completed and verified')
+      const weeks = Number.isFinite(task.weeks_before_event) ? Number(task.weeks_before_event) : undefined
+
+      return {
+        id: String(task.id || `T${String(index + 1).padStart(2, '0')}`),
+        layer: (['Promotion', 'Setup', 'Execution', 'Cleanup'].includes(task.layer) ? task.layer : 'Setup') as Layer,
+        title: String(task.title || `Execution task ${index + 1}`),
+        description: task.description ? String(task.description) : undefined,
+        time_minutes: Number(task.time_minutes) || 30,
+        who: String(task.who || 'Event Lead'),
+        definition_of_done: completion,
+        is_volunteer_claimable: Boolean(task.is_volunteer_claimable),
+        sub_project: String(task.workstream || task.sub_project || 'Event Operations'),
+        workstream: String(task.workstream || task.sub_project || 'Event Operations'),
+        depends_on: Array.isArray(task.depends_on) ? task.depends_on.map(String) : [],
+        approval_required: Boolean(task.approval_required),
+        approver: task.approver ? String(task.approver) : undefined,
+        completion_criteria: completion,
+        evidence_required: task.evidence_required ? String(task.evidence_required) : undefined,
+        risk_level: normaliseRisk(task.risk_level),
+        risk_if_missed: task.risk_if_missed ? String(task.risk_if_missed) : undefined,
+        contingency: task.contingency ? String(task.contingency) : undefined,
+        critical_path: Boolean(task.critical_path),
+        procurement_category: task.procurement_category ? String(task.procurement_category) : null,
+        vendor_scope: task.vendor_scope ? String(task.vendor_scope) : null,
+        weeks_before_event: weeks,
         target_date:
-          t.weeks_before_event != null
-            ? weeksBeforeToDate(smart.eventDate!, t.weeks_before_event)
+          smart?.eventDate && weeks != null
+            ? weeksBeforeToDate(smart.eventDate, weeks)
             : undefined,
-      }))
-    }
-
-    return tasks
-  } catch {
+      }
+    })
+  } catch (error) {
+    console.error('Failed to parse execution graph', error)
     return [
       {
-        layer: 'Promotion' as Layer,
-        title: 'Blueprint generation failed — please try again',
+        id: 'T01',
+        layer: 'Setup',
+        title: 'Execution-plan generation failed — please try again',
         time_minutes: 0,
         who: 'System',
-        definition_of_done: 'Contact support if this persists',
+        definition_of_done: 'A valid execution plan is generated',
+        completion_criteria: 'A valid execution plan is generated',
+        risk_level: 'critical',
+        risk_if_missed: 'No execution architecture is available.',
+        contingency: 'Retry generation. If the issue persists, contact support.',
+        critical_path: true,
+        depends_on: [],
         is_volunteer_claimable: false,
       },
     ]

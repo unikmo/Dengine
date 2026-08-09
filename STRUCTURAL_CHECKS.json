@@ -1,0 +1,44 @@
+{
+  "app/page.tsx": {
+    "chars": 14332,
+    "paren_balance": 0,
+    "brace_balance": 0,
+    "bracket_balance": 0
+  },
+  "app/layout.tsx": {
+    "chars": 3238,
+    "paren_balance": 0,
+    "brace_balance": 0,
+    "bracket_balance": 0
+  },
+  "app/pricing/page.tsx": {
+    "chars": 4837,
+    "paren_balance": 0,
+    "brace_balance": 0,
+    "bracket_balance": 0
+  },
+  "app/browse/page.tsx": {
+    "chars": 2904,
+    "paren_balance": 0,
+    "brace_balance": 0,
+    "bracket_balance": 0
+  },
+  "types/index.ts": {
+    "chars": 3338,
+    "paren_balance": 0,
+    "brace_balance": 0,
+    "bracket_balance": 0
+  },
+  "lib/anthropic.ts": {
+    "chars": 8589,
+    "paren_balance": 0,
+    "brace_balance": 0,
+    "bracket_balance": 0
+  },
+  "app/custom/page.tsx": {
+    "chars": 32402,
+    "paren_balance": 0,
+    "brace_balance": 0,
+    "bracket_balance": 0
+  }
+}

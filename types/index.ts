@@ -1,6 +1,7 @@
 export type Scale = 'Intimate' | 'Medium' | 'Large' | 'Mega'
 export type Layer = 'Promotion' | 'Setup' | 'Execution' | 'Cleanup'
 export type BudgetLevel = 0 | 1 | 2 | 3 | 4 | 5
+export type RiskLevel = 'low' | 'medium' | 'high' | 'critical'
 
 export const BUDGET_LABELS: Record<BudgetLevel, string> = {
   0: 'Volunteer',
@@ -74,15 +75,37 @@ export interface IntakeAnswers {
 }
 
 export interface GeneratedTask {
+  id?: string
   layer: Layer
   title: string
+  description?: string
   time_minutes: number
   who: string
+
+  // Backward compatibility
   definition_of_done: string
-  is_volunteer_claimable: boolean
   sub_project?: string
+
+  // Event Execution Graph
+  workstream?: string
+  depends_on?: string[]
+  approval_required?: boolean
+  approver?: string
+  completion_criteria?: string
+  evidence_required?: string
+  risk_level?: RiskLevel
+  risk_if_missed?: string
+  contingency?: string
+  critical_path?: boolean
+  procurement_category?: string | null
+  vendor_scope?: string | null
+
+  // Scheduling
   weeks_before_event?: number
   target_date?: string
+
+  // Existing community mode
+  is_volunteer_claimable: boolean
 }
 
 export interface SmartContext {

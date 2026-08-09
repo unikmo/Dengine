@@ -9,8 +9,17 @@
   --cream: #FAF7EF;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background-color: var(--cream);
+}
+
+::selection {
+  background: var(--gold);
+  color: var(--navy);
 }
 
 @layer components {
