@@ -1,9 +1,11 @@
 import crypto from 'node:crypto'
 
 function key() {
-  const secret = process.env.PLAN_ENCRYPTION_KEY
-  if (!secret || secret.length < 24) throw new Error('PLAN_ENCRYPTION_KEY must be configured with a strong secret.')
-  return crypto.createHash('sha256').update(secret).digest()
+  // Prefer a dedicated key. The server-only Supabase service-role secret is a safe
+  // bootstrap fallback for short-lived (48h) encrypted drafts until a dedicated key is set.
+  const secret = process.env.PLAN_ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  if (!secret || secret.length < 24) throw new Error('A strong server-side plan encryption secret is not configured.')
+  return crypto.createHash('sha256').update(`dengine-plan-vault-v1:${secret}`).digest()
 }
 
 export function encryptPlan(value: unknown) {
