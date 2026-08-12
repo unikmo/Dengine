@@ -1,51 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getServerSupabase } from '@/lib/supabase-server'
-import { getStripe, PRICE_BY_TIER, type PaidTier } from '@/lib/stripe'
+import { createServerClient } from '@/lib/supabase-server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+const PAYMENT_LINKS = {
+  essential:
+    process.env.STRIPE_PAYMENT_LINK_ESSENTIAL ||
+    'https://buy.stripe.com/test_8x2aEW371gWd6nT0jm0Fi00',
+  professional:
+    process.env.STRIPE_PAYMENT_LINK_PROFESSIONAL ||
+    'https://buy.stripe.com/test_00wfZg37135neUp2ru0Fi01',
+} as const
+
+type PaidTier = keyof typeof PAYMENT_LINKS
+
+function isUuid(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { draftToken, tier, acceptTerms, immediatePerformance } = await req.json()
-    if (!draftToken || !['essential','professional'].includes(tier)) return NextResponse.json({ error: 'Invalid checkout request.' }, { status: 400 })
-    if (!acceptTerms || !immediatePerformance) return NextResponse.json({ error: 'Required purchase acknowledgements are missing.' }, { status: 400 })
+    if (!isUuid(draftToken) || !['essential', 'professional'].includes(tier)) {
+      return NextResponse.json({ error: 'Invalid checkout request.' }, { status: 400 })
+    }
+    if (!acceptTerms || !immediatePerformance) {
+      return NextResponse.json({ error: 'Required purchase acknowledgements are missing.' }, { status: 400 })
+    }
 
     const paidTier = tier as PaidTier
-    const price = PRICE_BY_TIER[paidTier]
-    if (!price) return NextResponse.json({ error: 'Stripe price is not configured.' }, { status: 500 })
-
-    const supabase = getServerSupabase()
-    const { data: draft } = await supabase.from('dengine_plan_drafts').select('draft_token,event_summary,expires_at').eq('draft_token', draftToken).gt('expires_at', new Date().toISOString()).single()
-    if (!draft) return NextResponse.json({ error: 'This preview has expired. Please generate it again.' }, { status: 410 })
-
-    const origin = process.env.NEXT_PUBLIC_SITE_URL || req.nextUrl.origin
-    const stripe = getStripe()
-    const session = await stripe.checkout.sessions.create({
-      mode: 'payment',
-      line_items: [{ price, quantity: 1 }],
-      success_url: `${origin}/checkout/success?session_id={CHECKOUT_SESSION_ID}`,
-      cancel_url: `${origin}/custom?checkout=cancelled`,
-      customer_creation: 'always',
-      billing_address_collection: 'auto',
-      automatic_tax: { enabled: true },
-      invoice_creation: { enabled: true },
-      metadata: { draft_token: draftToken, tier: paidTier, app: 'dengine', immediate_performance: 'true', terms_accepted: 'true' },
+    const supabase = createServerClient()
+    const { error } = await supabase.rpc('dengine_prepare_checkout', {
+      p_draft_token: draftToken,
+      p_tier: paidTier,
+      p_accept_terms: true,
+      p_immediate_performance: true,
     })
 
-    await supabase.from('dengine_orders').insert({
-      draft_token: draftToken,
-      tier: paidTier,
-      amount_cents: paidTier === 'essential' ? 1900 : 3900,
-      stripe_checkout_session_id: session.id,
-      status: 'checkout_created',
-      accepted_terms_at: new Date().toISOString(),
-      immediate_performance_consent_at: new Date().toISOString(),
+    if (error) {
+      const expired = /expired|unavailable/i.test(error.message || '')
+      return NextResponse.json(
+        { error: expired ? 'This preview has expired. Please generate it again.' : 'Checkout could not be prepared.' },
+        { status: expired ? 410 : 400 },
+      )
+    }
+
+    const base = PAYMENT_LINKS[paidTier]
+    const separator = base.includes('?') ? '&' : '?'
+    const url = `${base}${separator}client_reference_id=${encodeURIComponent(draftToken)}`
+
+    const response = NextResponse.json({ url })
+    response.cookies.set('dengine_draft', draftToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 60 * 60 * 48,
     })
-    await supabase.from('dengine_conversion_events').insert({ event_name: 'checkout_started', draft_token: draftToken, metadata: { tier: paidTier } })
-    return NextResponse.json({ url: session.url })
+    return response
   } catch (error) {
-    console.error('Checkout creation failed', error)
+    console.error('Checkout preparation failed', error)
     return NextResponse.json({ error: 'Checkout could not be started.' }, { status: 500 })
   }
 }

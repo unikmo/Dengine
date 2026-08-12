@@ -1,9 +1,9 @@
 import crypto from 'node:crypto'
 
 function key() {
-  // Prefer a dedicated key. The server-only Supabase service-role secret is a safe
-  // bootstrap fallback for short-lived (48h) encrypted drafts until a dedicated key is set.
-  const secret = process.env.PLAN_ENCRYPTION_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY
+  // A dedicated key is preferred. ANTHROPIC_API_KEY is already server-only and required
+  // for generation, so it is a safe bootstrap key source for short-lived encrypted drafts.
+  const secret = process.env.PLAN_ENCRYPTION_KEY || process.env.ANTHROPIC_API_KEY
   if (!secret || secret.length < 24) throw new Error('A strong server-side plan encryption secret is not configured.')
   return crypto.createHash('sha256').update(`dengine-plan-vault-v1:${secret}`).digest()
 }

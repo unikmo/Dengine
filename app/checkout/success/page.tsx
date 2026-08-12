@@ -1,26 +1,32 @@
 import { CheckCircle2, GitBranch, ShieldAlert } from 'lucide-react'
-import { getStripe } from '@/lib/stripe'
-import { getServerSupabase } from '@/lib/supabase-server'
+import { cookies } from 'next/headers'
+import { createServerClient } from '@/lib/supabase-server'
 import { decryptPlan } from '@/lib/plan-vault'
 
 export const dynamic = 'force-dynamic'
 
-export default async function SuccessPage({ searchParams }: { searchParams: Promise<{ session_id?: string }> }) {
-  const { session_id } = await searchParams
-  if (!session_id) return <main className="shell py-20"><h1 className="display text-4xl font-black">Payment session missing.</h1></main>
+export default async function SuccessPage() {
+  const cookieStore = await cookies()
+  const draftToken = cookieStore.get('dengine_draft')?.value
+  if (!draftToken) {
+    return <main className="shell py-20"><p className="eyebrow">Plan reference missing</p><h1 className="display mt-4 text-4xl font-black">We cannot identify the purchased event plan in this browser.</h1><p className="mt-4 max-w-2xl text-[#687386]">Return to the event builder in the browser where checkout was started, or contact hello@dengine.app with the Stripe receipt email.</p></main>
+  }
 
-  const session = await getStripe().checkout.sessions.retrieve(session_id)
-  if (session.payment_status !== 'paid') return <main className="shell py-20"><h1 className="display text-4xl font-black">Payment is still being confirmed.</h1><p className="mt-4 text-[#687386]">Refresh this page after payment confirmation.</p></main>
-  const draftToken = session.metadata?.draft_token
-  const tier = session.metadata?.tier === 'professional' ? 'professional' : 'essential'
-  if (!draftToken) return <main className="shell py-20"><h1 className="display text-4xl font-black">Plan reference missing.</h1></main>
+  const supabase = createServerClient()
+  const { data, error } = await supabase.rpc('dengine_get_paid_draft', { p_draft_token: draftToken })
+  const row = Array.isArray(data) ? data[0] : data
 
-  const supabase = getServerSupabase()
-  const { data: draft } = await supabase.from('dengine_plan_drafts').select('*').eq('draft_token', draftToken).single()
-  if (!draft) return <main className="shell py-20"><h1 className="display text-4xl font-black">Your plan could not be loaded.</h1></main>
-  await supabase.from('dengine_orders').update({ status: 'paid', verified_at: new Date().toISOString(), customer_email: session.customer_details?.email || null }).eq('stripe_checkout_session_id', session.id)
+  if (error) {
+    console.error('Paid-plan lookup failed', error)
+    return <main className="shell py-20"><p className="eyebrow">Verification error</p><h1 className="display mt-4 text-4xl font-black">Your payment could not be verified right now.</h1><p className="mt-4 text-[#687386]">Your Stripe payment is not lost. Please refresh this page or contact hello@dengine.app.</p></main>
+  }
 
-  const plan = decryptPlan(draft) as any
+  if (!row) {
+    return <main className="shell py-20"><p className="eyebrow">Payment verification</p><h1 className="display mt-4 text-4xl font-black">Stripe is still confirming this purchase.</h1><p className="mt-4 max-w-2xl text-[#687386]">The plan unlocks only after DEngine receives and verifies Stripe's signed payment event. Refresh this page shortly.</p><a href="/checkout/success" className="btn-primary mt-7">Check payment again →</a></main>
+  }
+
+  const tier = row.paid_tier === 'professional' ? 'professional' : 'essential'
+  const plan = decryptPlan({ plan_ciphertext: row.plan_ciphertext, plan_iv: row.plan_iv, plan_tag: row.plan_tag }) as any
   const tasks = Array.isArray(plan.tasks) ? plan.tasks : []
   const groups = new Map<string, any[]>()
   tasks.forEach((task:any) => {

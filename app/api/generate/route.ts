@@ -2,7 +2,7 @@ import { randomUUID } from 'node:crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { generateBlueprint } from '@/lib/anthropic'
 import { encryptPlan } from '@/lib/plan-vault'
-import { getServerSupabase } from '@/lib/supabase-server'
+import { createServerClient } from '@/lib/supabase-server'
 import type { BudgetLevel, Event, IntakeAnswers, SmartContext } from '@/types'
 
 export const dynamic = 'force-dynamic'
@@ -29,11 +29,11 @@ function consumeRateLimit(key: string) {
   const now = Date.now(); const current = rateStore.get(key)
   if (!current || current.resetAt <= now) {
     rateStore.set(key, { count: 1, resetAt: now + RATE_WINDOW_MS })
-    return { allowed: true, remaining: RATE_LIMIT - 1, resetAt: now + RATE_WINDOW_MS }
+    return { allowed: true }
   }
-  if (current.count >= RATE_LIMIT) return { allowed: false, remaining: 0, resetAt: current.resetAt }
+  if (current.count >= RATE_LIMIT) return { allowed: false }
   current.count += 1; rateStore.set(key, current)
-  return { allowed: true, remaining: RATE_LIMIT - current.count, resetAt: current.resetAt }
+  return { allowed: true }
 }
 function normalizeEvent(raw: any): Event | null {
   if (!raw || typeof raw !== 'object') return null
@@ -90,8 +90,7 @@ function recommend(tasks: any[], intake: IntakeAnswers) {
 export async function POST(req: NextRequest) {
   const contentLength = Number(req.headers.get('content-length') || '0')
   if (contentLength > MAX_BODY_BYTES) return NextResponse.json({ error: 'Request is too large.' }, { status: 413 })
-  const rate = consumeRateLimit(getClientKey(req))
-  if (!rate.allowed) return NextResponse.json({ error: 'Too many plan generations. Please try again shortly.' }, { status: 429 })
+  if (!consumeRateLimit(getClientKey(req)).allowed) return NextResponse.json({ error: 'Too many plan generations. Please try again shortly.' }, { status: 429 })
 
   try {
     const body = await req.json()
@@ -114,17 +113,22 @@ export async function POST(req: NextRequest) {
       id: t.id, title: t.title, workstream: t.workstream || t.sub_project, who: t.who,
       weeks_before_event: t.weeks_before_event, target_date: t.target_date, critical_path: t.critical_path,
     }))
-    const supabase = getServerSupabase()
-    const { error } = await supabase.from('dengine_plan_drafts').insert({
-      draft_token: draftToken, plan_ciphertext: vault.ciphertext, plan_iv: vault.iv, plan_tag: vault.tag,
-      preview: { tasks: previewTasks, summary },
-      event_summary: { name: event.name, eventDate: smart?.eventDate, guestCount: intake.guest_count, city: smart?.city, country: smart?.country },
-      recommended_tier: recommendedTier,
-      expires_at: new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString(),
+
+    const preview = { tasks: previewTasks, summary }
+    const eventSummary = { name: event.name, eventDate: smart?.eventDate, guestCount: intake.guest_count, city: smart?.city, country: smart?.country }
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000).toISOString()
+    const supabase = createServerClient()
+    const { error } = await supabase.rpc('dengine_store_preview_draft', {
+      p_draft_token: draftToken,
+      p_plan_ciphertext: vault.ciphertext,
+      p_plan_iv: vault.iv,
+      p_plan_tag: vault.tag,
+      p_preview: preview,
+      p_event_summary: eventSummary,
+      p_recommended_tier: recommendedTier,
+      p_expires_at: expiresAt,
     })
     if (error) throw error
-    await supabase.from('dengine_conversion_events').insert({ event_name: 'preview_generated', draft_token: draftToken, metadata: summary })
-    await supabase.from('dengine_conversion_events').insert({ event_name: 'tier_recommended', draft_token: draftToken, metadata: { tier: recommendedTier } })
 
     return NextResponse.json({ draftToken, recommendedTier, summary, previewTasks }, { headers: { 'Cache-Control': 'no-store' } })
   } catch (error) {
