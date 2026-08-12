@@ -73,8 +73,8 @@ ${JSON.stringify(eventData)}
 </event_data>
 
 PLANNING RULES
-1. Produce 28–55 operational tasks. Prefer completeness and causal structure over generic advice.
-2. Group tasks into 4–8 professional workstreams such as Venue & Logistics, Program & Speakers, Registration & Guest Experience, Production & AV, Marketing & Communications, Commercial / Sponsors, Finance & Procurement, and Event-Day Operations.
+1. Right-size the graph to the actual event complexity. Straightforward events will typically need 18–30 operational tasks; complex professional events will typically need 28–55. Never add filler merely to reach a task count, and never omit necessary work merely to stay inside a band. Completeness and causal structure are more important than pricing tiers.
+2. Use the smallest useful workstream structure: typically 3–5 professional workstreams for straightforward events and 4–8 for complex events. Examples include Venue & Logistics, Program & Speakers, Registration & Guest Experience, Production & AV, Marketing & Communications, Commercial / Sponsors, Finance & Procurement, and Event-Day Operations.
 3. Every task must have a unique stable id: T01, T02, T03...
 4. Dependencies must reference only earlier task ids in this same output. Use [] where none exist.
 5. Mark critical_path true only where delay is likely to create downstream schedule risk.
