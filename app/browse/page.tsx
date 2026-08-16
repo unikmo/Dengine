@@ -32,14 +32,14 @@ export default function BrowsePage() {
       <section className="border-b border-black/[0.055] bg-[#f5f2ea]">
         <div className="shell grid items-end gap-8 py-16 lg:grid-cols-[1fr_auto] lg:py-20">
           <div className="max-w-3xl">
-            <p className="eyebrow">Event planning reference library</p>
+            <p className="eyebrow">Event execution template library</p>
             <h1 className="display mt-4 text-5xl font-black leading-[1.02] sm:text-6xl">
-              Start from event knowledge.
+              Start from execution knowledge.
               <span className="block text-[#8b7440]">Then tailor the operating plan.</span>
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-8 text-[#6d7889]">
-              Browse event types for coverage and inspiration. When you are ready to plan,
-              DEngine adapts the event context into a dependency-aware execution model.
+              Browse event types for coverage and inspiration. When you are ready to execute,
+              RunYourEvent adapts the event context into a dependency-aware execution model.
             </p>
           </div>
           <a href="/custom" className="btn-primary">
@@ -52,7 +52,7 @@ export default function BrowsePage() {
         <div className="mb-7 flex items-center justify-between gap-5">
           <div>
             <p className="text-sm font-black text-[#23324a]">Browse by category</p>
-            <p className="mt-1 text-xs text-[#8b94a2]">Reference event models already available in DEngine.</p>
+            <p className="mt-1 text-xs text-[#8b94a2]">Structured reference models available in RunYourEvent.</p>
           </div>
           <div className="hidden items-center gap-2 rounded-full border border-black/[0.055] bg-white px-3 py-2 text-xs font-bold text-[#7b8594] sm:flex">
             <Search size={13} /> Choose a category
@@ -98,7 +98,7 @@ export default function BrowsePage() {
             <p className="text-[11px] font-black uppercase tracking-[0.15em] text-[#efcd6d]">Your event is more specific?</p>
             <h2 className="mt-2 text-2xl font-black tracking-[-0.03em]">Describe it instead of searching for a perfect template.</h2>
             <p className="mt-2 max-w-2xl text-sm leading-6 text-white/50">
-              DEngine can use a reference model where available and adapt it to the objective, scale, format, venue status and fixed date.
+              RunYourEvent can use a reference model where available and adapt it to the objective, scale, format, venue status and fixed date.
             </p>
           </div>
           <a href="/custom" className="btn-signal mt-6 shrink-0 sm:mt-0">Build my plan →</a>

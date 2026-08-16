@@ -9,7 +9,7 @@ export async function generateMetadata(
   return {
     title: `${category} Event Planning`,
     description:
-      `Explore ${category} event planning reference models, then build a tailored dependency-aware execution plan with DEngine.`,
+      `Explore ${category} event planning reference models, then build a tailored dependency-aware execution plan with RunYourEvent.`,
     alternates: {
       canonical: `/browse/${encodeURIComponent(category)}`,
     },

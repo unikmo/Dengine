@@ -1,12 +1,1 @@
-import type { Metadata } from 'next'
-
-export const metadata: Metadata = {
-  title: 'Event Planning Reference Library',
-  description:
-    'Browse event planning reference models and categories, then turn your event date and context into a tailored execution plan with DEngine.',
-  alternates: { canonical: '/browse' },
-}
-
-export default function BrowseLayout({ children }: { children: React.ReactNode }) {
-  return children
-}
+import type { Metadata } from 'next';export const metadata:Metadata={title:'Event Execution Template Library',description:'Browse structured event reference models and use them as a starting point for a tailored RunYourEvent execution plan.',alternates:{canonical:'/browse'}};export default function Layout({children}:{children:React.ReactNode}){return children}

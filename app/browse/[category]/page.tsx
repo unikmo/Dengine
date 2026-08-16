@@ -52,7 +52,7 @@ export default function CategoryPage() {
           </h1>
           <p className="mt-4 max-w-2xl text-base leading-7 text-[#6d7889]">
             Use these event references to understand scope and coverage. For a real event,
-            DEngine can adapt the model to your fixed date, scale, format, venue status and objectives.
+            RunYourEvent can adapt the model to your fixed date, scale, format, venue status and objectives.
           </p>
 
           <a href="/custom" className="btn-primary mt-7">
@@ -136,7 +136,7 @@ export default function CategoryPage() {
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.14em] text-[#efcd6d]">Do not plan from a generic template</p>
             <h2 className="mt-2 text-2xl font-black tracking-[-0.03em]">
-              Use the library to understand scope. Use DEngine to plan the actual event.
+              Use the library to understand scope. Use RunYourEvent to plan the actual event.
             </h2>
           </div>
           <a href="/custom" className="btn-signal mt-6 shrink-0 sm:mt-0">

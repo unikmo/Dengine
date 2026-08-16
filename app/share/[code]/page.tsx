@@ -74,7 +74,7 @@ export default function SharePage() {
     <main className="bg-[#fbfaf7]">
       <section className="border-b border-black/[0.055] bg-[#f5f2ea]">
         <div className="shell py-12 sm:py-16">
-          <p className="eyebrow">Shared DEngine plan</p>
+          <p className="eyebrow">Shared RunYourEvent plan</p>
           <h1 className="display mt-4 text-4xl font-black leading-[1.02] sm:text-5xl">
             {blueprint.event_name}
           </h1>

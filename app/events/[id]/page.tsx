@@ -236,7 +236,7 @@ export default function EventPage() {
           <div className="mt-10 rounded-[28px] border border-black/[0.055] bg-white p-10 text-center">
             <p className="text-lg font-black text-[#23324a]">No reference tasks are attached to this event yet.</p>
             <p className="mx-auto mt-2 max-w-xl text-sm leading-6 text-[#7a8595]">
-              DEngine can still construct a tailored plan from your event brief.
+              RunYourEvent can still construct a tailored plan from your event brief.
             </p>
             <a href="/custom" className="btn-primary mt-6">Build the execution plan →</a>
           </div>

@@ -8,7 +8,7 @@ export default function NotFound() {
           <p className="mx-auto mt-4 max-w-xl text-base leading-7 text-[#6f7a8b]">
             The page may have moved, or the link may be outdated.
           </p>
-          <a href="/" className="btn-primary mt-7">Back to DEngine</a>
+          <a href="/" className="btn-primary mt-7">Back to RunYourEvent</a>
         </div>
       </div>
     </main>
