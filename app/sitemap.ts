@@ -1,2 +1,14 @@
 import type { MetadataRoute } from 'next'
-export default function sitemap():MetadataRoute.Sitemap { const base=process.env.NEXT_PUBLIC_SITE_URL||'https://runyourevent.com'; const paths=['','/event-types','/weddings','/family-reunions','/corporate','/agencies','/venues','/templates','/browse','/resources','/custom','/pricing','/about','/contact','/imprint','/privacy','/terms']; return paths.map((path,i)=>({url:`${base}${path}`,lastModified:new Date(),changeFrequency:i===0?'weekly' as const:'monthly' as const,priority:i===0?1:path==='/custom'?0.95:['/event-types','/templates','/pricing','/family-reunions'].includes(path)?0.8:0.65})) }
+import { SEO_ACQUISITION_PAGES } from '@/lib/seo-acquisition'
+
+export default function sitemap():MetadataRoute.Sitemap {
+  const base=process.env.NEXT_PUBLIC_SITE_URL||'https://runyourevent.com'
+  const core=['','/event-types','/agencies','/venues','/templates','/browse','/resources','/custom','/pricing','/about','/contact','/imprint','/privacy','/terms','/my-events']
+  const acquisition=SEO_ACQUISITION_PAGES.map(page=>`/${page.slug}`)
+  return [...core,...acquisition].map((path,i)=>({
+    url:`${base}${path}`,
+    lastModified:new Date(),
+    changeFrequency:path===''?'weekly' as const:'monthly' as const,
+    priority:path===''?1:path==='/custom'?0.95:path==='/company-event-planning'?0.92:['/event-planning-checklist','/event-planning-template','/wedding-planning-checklist','/family-reunion-planning'].includes(path)?0.86:0.72,
+  }))
+}
