@@ -3,7 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { createServerClient } from '@/lib/supabase-server'
 import { decryptPlan } from '@/lib/plan-vault'
-import { WORKSPACE_COOKIE, hashWorkspaceToken } from '@/lib/workspace-auth'
+import { hashWorkspaceToken, workspaceCookieName } from '@/lib/workspace-auth'
 
 export const runtime='nodejs'
 export const dynamic='force-dynamic'
@@ -21,7 +21,7 @@ export async function POST(req:NextRequest){
     const {data:workspaceId,error:provisionError}=await db.rpc('rye_provision_workspace',{p_draft_token:draftToken,p_plan:plan,p_owner_access_hash:hashWorkspaceToken(token)})
     if(provisionError||!workspaceId) throw provisionError||new Error('Workspace could not be created')
     const response=NextResponse.redirect(new URL(`/workspace/${workspaceId}`,req.url),303)
-    response.cookies.set(WORKSPACE_COOKIE,`${workspaceId}.${token}`,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:60*60*24*365})
+    response.cookies.set(workspaceCookieName(String(workspaceId)),token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:60*60*24*365})
     return response
   }catch(error){console.error('Workspace provisioning failed',error);return NextResponse.json({error:'Workspace could not be created.'},{status:500})}
 }
