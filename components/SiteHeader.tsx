@@ -11,13 +11,14 @@ export default function SiteHeader() {
         </a>
         <nav className="hidden items-center gap-6 text-sm font-semibold text-[#637083] lg:flex" aria-label="Primary">
           <a href="/#product" className="transition-colors hover:text-[#15233f]">Product</a>
+          <a href="/company-event-planning" className="transition-colors hover:text-[#15233f]">Company Events</a>
           <a href="/event-types" className="transition-colors hover:text-[#15233f]">Event Types</a>
           <a href="/templates" className="transition-colors hover:text-[#15233f]">Templates</a>
           <a href="/pricing" className="transition-colors hover:text-[#15233f]">Pricing</a>
           <a href="/resources" className="transition-colors hover:text-[#15233f]">Resources</a>
           <a href="/my-events" className="font-black text-[#9a7b31] transition-colors hover:text-[#15233f]">My Events</a>
         </nav>
-        <div className="flex items-center gap-2"><a href="/my-events" className="rounded-xl px-3 py-2 text-xs font-black text-[#637083] lg:hidden">My Events</a><a href="/custom" className="btn-signal !px-4 sm:!px-5"><span className="hidden sm:inline">Start Planning</span><span className="sm:hidden">Start</span><span aria-hidden="true" className="ml-2">→</span></a></div>
+        <div className="flex items-center gap-2"><a href="/my-events" className="rounded-xl px-3 py-2 text-xs font-black text-[#637083] lg:hidden">My Events</a><a href="/custom" className="btn-signal !px-4 sm:!px-5"><span className="hidden sm:inline">Build Plan</span><span className="sm:hidden">Build</span><span aria-hidden="true" className="ml-2">→</span></a></div>
       </div>
     </header>
   )
