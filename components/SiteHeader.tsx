@@ -15,8 +15,9 @@ export default function SiteHeader() {
           <a href="/templates" className="transition-colors hover:text-[#15233f]">Templates</a>
           <a href="/pricing" className="transition-colors hover:text-[#15233f]">Pricing</a>
           <a href="/resources" className="transition-colors hover:text-[#15233f]">Resources</a>
+          <a href="/my-events" className="font-black text-[#9a7b31] transition-colors hover:text-[#15233f]">My Events</a>
         </nav>
-        <a href="/custom" className="btn-signal !px-4 sm:!px-5"><span className="hidden sm:inline">Start Planning</span><span className="sm:hidden">Start</span><span aria-hidden="true" className="ml-2">→</span></a>
+        <div className="flex items-center gap-2"><a href="/my-events" className="rounded-xl px-3 py-2 text-xs font-black text-[#637083] lg:hidden">My Events</a><a href="/custom" className="btn-signal !px-4 sm:!px-5"><span className="hidden sm:inline">Start Planning</span><span className="sm:hidden">Start</span><span aria-hidden="true" className="ml-2">→</span></a></div>
       </div>
     </header>
   )
