@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createServerClient } from '@/lib/supabase-server'
-import { WORKSPACE_COOKIE, hashWorkspaceToken } from '@/lib/workspace-auth'
+import { hashWorkspaceToken, workspaceCookieName } from '@/lib/workspace-auth'
 
 export async function GET(req:NextRequest){
   const token=req.nextUrl.searchParams.get('token')||''
@@ -9,6 +9,6 @@ export async function GET(req:NextRequest){
   const workspaceId=(data as any)?.workspaceId
   if(error||!workspaceId) return NextResponse.redirect(new URL('/?invite=invalid',req.url),303)
   const response=NextResponse.redirect(new URL(`/workspace/${workspaceId}`,req.url),303)
-  response.cookies.set(WORKSPACE_COOKIE,`${workspaceId}.${token}`,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:60*60*24*365})
+  response.cookies.set(workspaceCookieName(String(workspaceId)),token,{httpOnly:true,secure:process.env.NODE_ENV==='production',sameSite:'lax',path:'/',maxAge:60*60*24*365})
   return response
 }
