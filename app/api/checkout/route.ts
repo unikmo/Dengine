@@ -4,16 +4,19 @@ import { createServerClient } from '@/lib/supabase-server'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const PAYMENT_LINKS = {
-  essential:
-    process.env.STRIPE_PAYMENT_LINK_ESSENTIAL ||
-    'https://buy.stripe.com/test_8x2aEW371gWd6nT0jm0Fi00',
-  professional:
-    process.env.STRIPE_PAYMENT_LINK_PROFESSIONAL ||
-    'https://buy.stripe.com/test_00wfZg37135neUp2ru0Fi01',
+const TEST_LINKS = {
+  essential: 'https://buy.stripe.com/test_8x2aEW371gWd6nT0jm0Fi00',
+  professional: 'https://buy.stripe.com/test_00wfZg37135neUp2ru0Fi01',
 } as const
 
-type PaidTier = keyof typeof PAYMENT_LINKS
+type PaidTier = keyof typeof TEST_LINKS
+
+function paymentLink(tier: PaidTier) {
+  const configured = tier === 'essential' ? process.env.STRIPE_PAYMENT_LINK_ESSENTIAL : process.env.STRIPE_PAYMENT_LINK_PROFESSIONAL
+  if (configured) return configured
+  if (process.env.NODE_ENV !== 'production') return TEST_LINKS[tier]
+  throw new Error(`Live Stripe payment link is not configured for ${tier}.`)
+}
 
 function isUuid(value: unknown): value is string {
   return typeof value === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value)
@@ -40,13 +43,11 @@ export async function POST(req: NextRequest) {
 
     if (error) {
       const expired = /expired|unavailable/i.test(error.message || '')
-      return NextResponse.json(
-        { error: expired ? 'This preview has expired. Please generate it again.' : 'Checkout could not be prepared.' },
-        { status: expired ? 410 : 400 },
-      )
+      return NextResponse.json({ error: expired ? 'This preview has expired. Please generate it again.' : 'Checkout could not be prepared.' }, { status: expired ? 410 : 400 })
     }
 
-    const base = PAYMENT_LINKS[paidTier]
+    const base = paymentLink(paidTier)
+    if (!/^https:\/\/buy\.stripe\.com\//i.test(base)) throw new Error('Invalid Stripe payment-link configuration.')
     const separator = base.includes('?') ? '&' : '?'
     const url = `${base}${separator}client_reference_id=${encodeURIComponent(draftToken)}`
 
@@ -61,6 +62,9 @@ export async function POST(req: NextRequest) {
     return response
   } catch (error) {
     console.error('Checkout preparation failed', error)
-    return NextResponse.json({ error: 'Checkout could not be started.' }, { status: 500 })
+    const message = error instanceof Error && /Live Stripe payment link/.test(error.message)
+      ? 'Payments are not yet enabled on this production environment.'
+      : 'Checkout could not be started.'
+    return NextResponse.json({ error: message }, { status: 503 })
   }
 }
